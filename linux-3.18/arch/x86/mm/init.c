@@ -671,6 +671,8 @@ void __init zone_sizes_init(void)
 {
 	unsigned long max_zone_pfns[MAX_NR_ZONES];
 
+	daisy_printk("%s\n", __func__);
+
 	memset(max_zone_pfns, 0, sizeof(max_zone_pfns));
 
 #ifdef CONFIG_ZONE_DMA
@@ -683,6 +685,12 @@ void __init zone_sizes_init(void)
 #ifdef CONFIG_HIGHMEM
 	max_zone_pfns[ZONE_HIGHMEM]	= max_pfn;
 #endif
+
+	/*print max_zone_pfns*/
+	int i;
+	for(i=0; i<MAX_NR_ZONES; ++i) {
+		daisy_printk("max_zone_pfns %d: %lu\n", i, max_zone_pfns[i]);
+	}
 
 	free_area_init_nodes(max_zone_pfns);
 }
