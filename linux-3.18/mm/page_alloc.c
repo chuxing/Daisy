@@ -3357,9 +3357,11 @@ static int build_zonelists_node(pg_data_t *pgdat, struct zonelist *zonelist,
 	struct zone *zone;
 	enum zone_type zone_type = MAX_NR_ZONES;
 
+	daisy_printk("build_zonelists_node pgdat->node_id: %d, nr_zones: %d\n", pgdat->node_id, pgdat->nr_zones);
 	do {
 		zone_type--;
 		zone = pgdat->node_zones + zone_type;
+		daisy_printk("zone->present_pages: %s %lu\n", zone->name, zone->present_pages);
 		if (populated_zone(zone)) {
 			zoneref_set_zone(zone,
 				&zonelist->_zonerefs[nr_zones++]);
@@ -3557,9 +3559,11 @@ static void build_zonelists_in_node_order(pg_data_t *pgdat, int node)
 	int j;
 	struct zonelist *zonelist;
 
+	daisy_printk("build_zonelists_in_node_order\n");
 	zonelist = &pgdat->node_zonelists[0];
 	for (j = 0; zonelist->_zonerefs[j].zone != NULL; j++)
 		;
+	daisy_printk("build_zonelists_in_node_order j: %d\n", j);
 	j = build_zonelists_node(NODE_DATA(node), zonelist, j);
 	zonelist->_zonerefs[j].zone = NULL;
 	zonelist->_zonerefs[j].zone_idx = 0;
@@ -3638,10 +3642,36 @@ static int default_zonelist_order(void)
 
 static void set_zonelist_order(void)
 {
+	daisy_printk("%s %s\n", __FILE__, __func__);
 	if (user_zonelist_order == ZONELIST_ORDER_DEFAULT)
 		current_zonelist_order = default_zonelist_order();
 	else
 		current_zonelist_order = user_zonelist_order;
+	daisy_printk("current_zonelist_order: %d\n", current_zonelist_order);
+}
+
+static void print_pgdat(pg_data_t *pgdat)
+{
+	struct zone *z;
+	int i, j;
+
+	daisy_printk("%s %s\n", __FILE__, __func__);
+	/*print node_zones*/
+	for (i=0; i<MAX_NR_ZONES; ++i) {
+		daisy_printk("%s ", pgdat->node_zones[i].name);
+	}
+	daisy_printk("...\n");
+	/*print node_zonelists*/
+	for (i=0; i<MAX_ZONELISTS; ++i) {
+		for (j=0; j<(MAX_ZONES_PER_ZONELIST+1); ++j) {
+			z = pgdat->node_zonelists[i]._zonerefs[j].zone;
+			if (z == NULL) {
+				break;
+			}
+			daisy_printk("%s ", z->name);
+		}
+		daisy_printk("...\n");
+	}
 }
 
 static void build_zonelists(pg_data_t *pgdat)
@@ -3653,6 +3683,7 @@ static void build_zonelists(pg_data_t *pgdat)
 	struct zonelist *zonelist;
 	int order = current_zonelist_order;
 
+	daisy_printk("%s %s\n", __FILE__, __func__);
 	/* initialize zonelists */
 	for (i = 0; i < MAX_ZONELISTS; i++) {
 		zonelist = pgdat->node_zonelists + i;
@@ -3670,6 +3701,7 @@ static void build_zonelists(pg_data_t *pgdat)
 	j = 0;
 
 	while ((node = find_next_best_node(local_node, &used_mask)) >= 0) {
+		daisy_printk("find_next_best_node: %d\n", node);
 		/*
 		 * We don't want to pressure a particular node.
 		 * So adding penalty to the first node in same
@@ -3693,6 +3725,7 @@ static void build_zonelists(pg_data_t *pgdat)
 	}
 
 	build_thisnode_zonelists(pgdat);
+	print_pgdat(pgdat);
 }
 
 /* Construct the zonelist performance cache - see further mmzone.h */
@@ -3702,6 +3735,7 @@ static void build_zonelist_cache(pg_data_t *pgdat)
 	struct zonelist_cache *zlc;
 	struct zoneref *z;
 
+	daisy_printk("%s %s\n", __FILE__, __func__);
 	zonelist = &pgdat->node_zonelists[0];
 	zonelist->zlcache_ptr = zlc = &zonelist->zlcache;
 	bitmap_zero(zlc->fullzones, MAX_ZONES_PER_ZONELIST);
@@ -3821,6 +3855,7 @@ static int __build_all_zonelists(void *data)
 	for_each_online_node(nid) {
 		pg_data_t *pgdat = NODE_DATA(nid);
 
+		daisy_printk("nid: %d\n", nid);
 		build_zonelists(pgdat);
 		build_zonelist_cache(pgdat);
 	}
@@ -3864,13 +3899,16 @@ static int __build_all_zonelists(void *data)
  */
 void __ref build_all_zonelists(pg_data_t *pgdat, struct zone *zone)
 {
+	daisy_printk("%s %s\n", __FILE__, __func__);
 	set_zonelist_order();
 
 	if (system_state == SYSTEM_BOOTING) {
+		daisy_printk("%s: Booting\n", __func__);
 		__build_all_zonelists(NULL);
 		mminit_verify_zonelist();
 		cpuset_init_current_mems_allowed();
 	} else {
+		daisy_printk("%s: Not booting\n", __func__);
 #ifdef CONFIG_MEMORY_HOTPLUG
 		if (zone)
 			setup_zone_pageset(zone);
@@ -3893,7 +3931,7 @@ void __ref build_all_zonelists(pg_data_t *pgdat, struct zone *zone)
 	else
 		page_group_by_mobility_disabled = 0;
 
-	printk("Built %i zonelists in %s order, mobility grouping %s.  "
+	daisy_printk("Built %i zonelists in %s order, mobility grouping %s.  "
 		"Total pages: %ld\n",
 			nr_online_nodes,
 			zonelist_order_name[current_zonelist_order],
@@ -5310,6 +5348,8 @@ void __init free_area_init_nodes(unsigned long *max_zone_pfn)
 {
 	unsigned long start_pfn, end_pfn;
 	int i, nid;
+
+	daisy_printk("%s %s\n", __FILE__, __func__);
 
 	/* Record where the zone boundaries are */
 	memset(arch_zone_lowest_possible_pfn, 0,

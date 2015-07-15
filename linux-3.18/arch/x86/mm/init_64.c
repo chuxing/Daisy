@@ -660,6 +660,8 @@ void __init initmem_init(void)
 
 void __init paging_init(void)
 {
+	daisy_printk("%s %s\n", __FILE__, __func__);
+
 	sparse_memory_present_with_active_regions(MAX_NUMNODES);
 	sparse_init();
 

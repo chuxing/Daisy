@@ -681,6 +681,7 @@ static int __init dummy_numa_init(void)
  */
 void __init x86_numa_init(void)
 {
+	daisy_printk("%s %s\n", __FILE__, __func__);
 	if (!numa_off) {
 #ifdef CONFIG_ACPI_NUMA
 		if (!numa_init(x86_acpi_numa_init))
