@@ -670,9 +670,10 @@ void __init free_initrd_mem(unsigned long start, unsigned long end)
 void __init zone_sizes_init(void)
 {
 	unsigned long max_zone_pfns[MAX_NR_ZONES];
+	unsigned long SCM_PFN = (128*1024/4);
 
 	daisy_printk("%s %s\n", __FILE__, __func__);
-	daisy_printk("%lu %lu\n", max_low_pfn, max_pfn);
+	daisy_printk("%lu %lu %lu\n", max_low_pfn, max_pfn, SCM_PFN);
 	memset(max_zone_pfns, 0, sizeof(max_zone_pfns));
 
 #ifdef CONFIG_ZONE_DMA
@@ -681,11 +682,13 @@ void __init zone_sizes_init(void)
 #ifdef CONFIG_ZONE_DMA32
 	max_zone_pfns[ZONE_DMA32]	= MAX_DMA32_PFN;
 #endif
-	max_zone_pfns[ZONE_NORMAL]	= max_low_pfn;
+	max_zone_pfns[ZONE_NORMAL]	= ((max_low_pfn - SCM_PFN) > MAX_DMA32_PFN)? (max_low_pfn - SCM_PFN): MAX_DMA32_PFN;
 #ifdef CONFIG_HIGHMEM
 	max_zone_pfns[ZONE_HIGHMEM]	= max_pfn;
 #endif
-
+#ifdef CONFIG_DAISY
+	max_zone_pfns[ZONE_SCM]	= max_low_pfn;
+#endif
 	/*print max_zone_pfns*/
 	int i;
 	for(i=0; i<MAX_NR_ZONES; ++i) {
