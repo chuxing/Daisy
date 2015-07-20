@@ -3320,6 +3320,118 @@ static int reserve_mem_notifier(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
+unsigned long do_p_mmap_pgoff(unsigned long addr,
+			unsigned long len, unsigned long prot,
+			unsigned long flags, unsigned long pgoff,unsigned long* populate)
+{
+	struct mm_struct *mm = current->mm;
+	vm_flags_t vm_flags;
+
+
+	/*
+	 * Does the application expect PROT_READ to imply PROT_EXEC?
+	 *
+	 * (the exception is when the underlying filesystem is noexec
+	 *  mounted, in which case we dont add PROT_EXEC.)
+	 */
+	if ((prot & PROT_READ) && (current->personality & READ_IMPLIES_EXEC))
+			prot |= PROT_EXEC;
+
+	if (!len)
+		return -EINVAL;
+
+	if (!(flags & MAP_FIXED))
+		addr = round_hint_to_min(addr);
+
+	/* Careful about overflows.. */
+	len = PAGE_ALIGN(len);
+	if (!len)
+		return -ENOMEM;
+
+	/* offset overflow? */
+	if ((pgoff + (len >> PAGE_SHIFT)) < pgoff)
+		return -EOVERFLOW;
+
+	/* Too many mappings? */
+	if (mm->map_count > sysctl_max_map_count)
+		return -ENOMEM;
+
+	/* Obtain the address to map to. we verify (or select) it and ensure
+	 * that it represents a valid section of the address space.
+	 */
+	addr = get_unmapped_area(NULL, addr, len, pgoff, flags);
+	if (addr & ~PAGE_MASK)
+		return addr;
+
+	/* Do simple checking here so the lower-level routines won't have
+	 * to. we assume access permissions have been handled by the open
+	 * of the memory object, so we don't do any here.
+	 */
+	vm_flags = calc_vm_prot_bits(prot) | calc_vm_flag_bits(flags) |
+			mm->def_flags | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC | VM_PCM;
+
+	if (flags & MAP_LOCKED)
+		if (!can_do_mlock())
+			return -EPERM;
+
+	if (mlock_future_check(mm, vm_flags, len))
+		return -EAGAIN;
+
+
+	switch (flags & MAP_TYPE) {
+	case MAP_SHARED:
+		if (vm_flags & (VM_GROWSDOWN | VM_GROWSUP))
+			return -EINVAL;
+		/*
+		 * Ignore pgoff.
+		 */
+		pgoff = 0;
+		vm_flags |= VM_SHARED | VM_MAYSHARE;
+		break;
+	case MAP_PRIVATE:
+		/*
+		 * Set pgoff according to addr for anon_vma.
+		 */
+		pgoff = addr >> PAGE_SHIFT;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+
+	/*
+	 * Set 'VM_NORESERVE' if we should not account for the
+	 * memory use of this mapping.
+	 */
+	if (flags & MAP_NORESERVE) {
+		/* We honor MAP_NORESERVE if allowed to overcommit */
+		if (sysctl_overcommit_memory != OVERCOMMIT_NEVER)
+			vm_flags |= VM_NORESERVE;
+	}
+
+	addr = mmap_region(NULL, addr, len, vm_flags, pgoff);
+	*populate=len;
+	return addr;
+}
+
+
+SYSCALL_DEFINE4(p_mmap, unsigned long, addr, unsigned long, len,
+		unsigned long, prot,	unsigned long, id)
+{
+	unsigned int flags=MAP_ANONYMOUS|MAP_PRIVATE;
+	unsigned long retval = -EBADF;
+	struct mm_struct *mm = current->mm;
+	unsigned long populate;
+	printk("p_map : 0x%lx , %ld , 0x%lx ,%ld\n",addr,len,prot,id);
+
+	down_write(&mm->mmap_sem);
+	retval = do_p_mmap_pgoff( addr, len, prot, flags, 0,&populate);
+	up_write(&mm->mmap_sem);
+	mm_populate(retval, populate);
+
+	return retval;
+}
+
 static struct notifier_block reserve_mem_nb = {
 	.notifier_call = reserve_mem_notifier,
 };
