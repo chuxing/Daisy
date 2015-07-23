@@ -3362,7 +3362,8 @@ int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	 */
 	if (flags & FAULT_FLAG_USER)
 		mem_cgroup_oom_enable();
-
+	if(vma->vm_flags & VM_PCM)
+		printk("PCM!!!!!!!\n");
 	ret = __handle_mm_fault(mm, vma, address, flags);
 
 	if (flags & FAULT_FLAG_USER) {
