@@ -1,4 +1,4 @@
 make -j4
-watch "cat linux-3.18/1.log | grep 'zhoutall'
+watch "cat linux-3.18/1.log | grep 'Daisy'
 qemu-system-x86_64 -hda ../linux-0.2.img -kernel arch/x86_64/boot/bzImage -append "root=/dev/sda console=ttyS0 rdinit=/bin/sh" -m 1024 -nographic &> 1.log
 pkill -f qemu
