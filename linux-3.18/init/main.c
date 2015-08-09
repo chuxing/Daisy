@@ -78,6 +78,7 @@
 #include <linux/context_tracking.h>
 #include <linux/random.h>
 #include <linux/list.h>
+#include <linux/scm.h>
 
 #include <asm/io.h>
 #include <asm/bugs.h>
@@ -528,7 +529,13 @@ asmlinkage __visible void __init start_kernel(void)
 	boot_cpu_init();
 	page_address_init();
 	pr_notice("%s", linux_banner);
+
+	scm_print_test();
+
 	setup_arch(&command_line);
+
+	scm_ptable_init();
+
 	mm_init_cpumask(&init_mm);
 	setup_command_line(command_line);
 	setup_nr_cpu_ids();
