@@ -141,7 +141,7 @@ int printk_emit(int facility, int level,
 asmlinkage __printf(1, 2) __cold
 int printk(const char *fmt, ...);
 
-#ifdef CONFIG_DAISY
+#ifdef CONFIG_SCM
 asmlinkage __printf(1, 2) __cold
 int daisy_printk(const char *fmt, ...);
 #endif

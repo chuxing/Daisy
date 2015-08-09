@@ -318,7 +318,7 @@ enum zone_type {
 	 */
 	ZONE_HIGHMEM,
 #endif
-#ifdef CONFIG_DAISY
+#ifdef CONFIG_SCM
 	ZONE_SCM,
 #endif
 	ZONE_MOVABLE,

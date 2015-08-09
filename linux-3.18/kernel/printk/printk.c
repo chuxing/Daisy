@@ -1849,14 +1849,14 @@ asmlinkage __visible int printk(const char *fmt, ...)
 }
 EXPORT_SYMBOL(printk);
 
-#ifdef CONFIG_DAISY
+#ifdef CONFIG_SCM
 asmlinkage __visible int daisy_printk(const char *fmt, ...) {
 	va_list args;
 	int r;
 	char buf[128] = "[Daisy] ";
 	va_start(args, fmt);
 	vsnprintf(buf+8, sizeof(buf)-8, fmt, args);
-#ifdef CONFIG_DAISY_DEBUG
+#ifdef CONFIG_SCM_DEBUG
 	r = printk(buf);
 #endif
 	va_end(args);

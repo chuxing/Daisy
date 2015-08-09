@@ -185,7 +185,7 @@ int sysctl_lowmem_reserve_ratio[MAX_NR_ZONES-1] = {
 #ifdef CONFIG_HIGHMEM
 	 32,
 #endif
-#ifdef CONFIG_DAISY
+#ifdef CONFIG_SCM
 	 32,
 #endif
 	 32,
@@ -204,7 +204,7 @@ static char * const zone_names[MAX_NR_ZONES] = {
 #ifdef CONFIG_HIGHMEM
 	 "HighMem",
 #endif
-#ifdef CONFIG_DAISY
+#ifdef CONFIG_SCM
 	 "Scm",
 #endif
 	 "Movable",
