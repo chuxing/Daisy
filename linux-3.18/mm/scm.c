@@ -18,10 +18,11 @@ int scm_ptable_init(void)
 {
 	size_t size = 1024 * PAGE_SIZE;
 	phys_addr_t phys;
-	phys_addr_t tmp = PFN_PHYS(max_pfn_mapped)-(SCM_PFN_NUM<<PAGE_SHIFT);
-	phys = memblock_find_in_range(tmp, tmp+size, size, PAGE_SIZE);
+	phys_addr_t start = PFN_PHYS(max_pfn_mapped)-(SCM_PFN_NUM<<PAGE_SHIFT);
+	/* must from start to start+size */
+	phys = memblock_find_in_range(start, start + size, size, PAGE_SIZE);
 	if (!phys) {
-		daisy_printk("error\n");
+		daisy_printk("memblock_find_in_range error\n");
 		return -ENOMEM;
 	}
 	memblock_reserve(phys, size);
