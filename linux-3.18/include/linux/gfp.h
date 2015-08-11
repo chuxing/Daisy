@@ -175,6 +175,12 @@ static inline int gfpflags_to_migratetype(const gfp_t gfp_flags)
 		((gfp_flags & __GFP_RECLAIMABLE) != 0);
 }
 
+#ifdef CONFIG_SCM
+#define OPT_ZONE_SCM ZONE_SCM
+#else
+#define OPT_ZONE_SCM ZONE_NORMAL
+#endif
+
 #ifdef CONFIG_HIGHMEM
 #define OPT_ZONE_HIGHMEM ZONE_HIGHMEM
 #else
@@ -240,7 +246,7 @@ static inline int gfpflags_to_migratetype(const gfp_t gfp_flags)
 	| ((unsigned long)OPT_ZONE_DMA << (___GFP_MOVABLE | ___GFP_DMA) * ZONES_SHIFT)	      \
 	| ((unsigned long)ZONE_MOVABLE << (___GFP_MOVABLE | ___GFP_HIGHMEM) * ZONES_SHIFT)   \
 	| ((unsigned long)OPT_ZONE_DMA32 << (___GFP_MOVABLE | ___GFP_DMA32) * ZONES_SHIFT)   \
-    | ((unsigned long)ZONE_SCM << ___GFP_SCM * ZONES_SHIFT)  \
+    | ((unsigned long)OPT_ZONE_SCM << ___GFP_SCM * ZONES_SHIFT)  \
 )
 
 /*
