@@ -1059,6 +1059,7 @@ static void __init register_page_bootmem_info(void)
 
 void __init mem_init(void)
 {
+	daisy_printk("%s %s\n", __FILE__, __func__);
 	pci_iommu_alloc();
 
 	/* clear_bss() already clear the empty_zero_page */
