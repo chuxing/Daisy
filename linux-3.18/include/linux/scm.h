@@ -4,6 +4,7 @@
 #define _SCM_H
 
 #include <linux/rbtree.h>
+#include <linux/list.h>
 
 /**
  * magic number
@@ -60,8 +61,14 @@ struct hptable_node {
 	struct rb_node	hptable_rb;
 };
 
+struct table_freelist {
+	void *node_addr;
+	struct list_head list;
+};
+
 /* linux/mm/scm.c */
-int scm_ptable_init(void);
+void scm_ptable_boot(void);
+void scm_freelist_init(void);
 
 void scm_test_code(void);
 
