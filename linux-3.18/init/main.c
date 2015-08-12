@@ -533,7 +533,7 @@ asmlinkage __visible void __init start_kernel(void)
 	pr_notice("%s", linux_banner);
 	setup_arch(&command_line);
 
-	scm_ptable_init();
+	scm_ptable_boot();
 
 	mm_init_cpumask(&init_mm);
 	setup_command_line(command_line);
