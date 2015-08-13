@@ -37,7 +37,7 @@ static void reserve_scm_ptable_memory(void)
 	phys = memblock_find_in_range(scm_start_phys, scm_start_phys + size, size, PAGE_SIZE);
 	if (!phys) {
 		daisy_printk("Error when getting persist table memory!!!!\n");
-		/* TODO BUG here */
+		/* TODO BUG here must abort */
 		return;
 	}
 	memblock_reserve(phys, size);
@@ -53,8 +53,8 @@ static void reserve_scm_ptable_memory(void)
 static void scm_ptable_init(void)
 {
 	scm_head->magic = SCM_MAGIC;
-	scm_head->ptable_ptr = NULL;
-	scm_head->hptable_ptr = NULL;
+	scm_head->ptable_rb = RB_ROOT;
+	scm_head->hptable_rb = RB_ROOT;
 	/* calc scm_head->len */
 	scm_head->len = (scm_head->total_size - sizeof(struct scm_head))/sizeof(struct ptable_node);
 	/* do i need a whole memset (set to 0)? */
@@ -81,8 +81,8 @@ void scm_ptable_boot(void)
 	 * */
 	daisy_printk("scm_head: %lu %lu %lu %lu\n",
 			scm_head->magic,
-			scm_head->ptable_ptr,
-			scm_head->hptable_ptr,
+			scm_head->ptable_rb,
+			scm_head->hptable_rb,
 			scm_head->len);
 	if (scm_head->magic != SCM_MAGIC) {
 		/* this is a new SCM */
@@ -94,25 +94,56 @@ void scm_ptable_boot(void)
 }
 
 /* Just traverse the tree to init the freelist in DRAM */
-void scm_freelist_init(void)
+void scm_freelist_boot(void)
 {
 	struct table_freelist *tmp;
 	unsigned long i;
 	/* this SCM is new */
-	if (scm_head->ptable_ptr == NULL && scm_head->hptable_ptr == NULL) {
+	if (RB_EMPTY_ROOT(scm_head->ptable_rb) && RB_EMPTY_ROOT(scm_head->hptable_rb)) {
 		for (i=0; i<scm_head->len; ++i) {
 			tmp= (struct table_freelist *)kmalloc(sizeof(struct table_freelist), GFP_KERNEL);
 			tmp->node_addr = (char *)&scm_head->data + i*sizeof(struct ptable_node);
 			list_add_tail(&tmp->list, &table_freelist.list);
 		}
 	} else {
-	/* SCM is not new */
+	/**
+	 * SCM is not new
+	 * Reference: find_vma browse_rb...
+	 * */
+		char usage_map[scm_head->len] = {0};
+		unsigned long index;
 		/* ptable */
-		if (scm_head->ptable_ptr) {
-			struct ptable_node *root;
-
+		if (!RB_EMPTY_ROOT(scm_head->ptable_rb)) {
+			struct ptable_node *nd;
+			for (nd = rb_first(&scm_head->ptable_rb); nd; nd = rb_next(nd)) {
+				struct ptable_node *touch;
+				touch = rb_entry(nd, struct ptable_node, ptable_rb);
+				/* ignore small memory region */
+				if (touch->flags == 0) {
+					index = ((unsigned long)touch-scm_head->data)/sizeof(struct ptable_node);
+					usage_map[index] = 1;
+				}
+			}
 		}
 		/* hptable */
+		if (!RB_EMPTY_ROOT(scm_head->hptable_rb)) {
+			struct hptable_node *nd;
+			for (nd = rb_first(&scm_head->hptable_rb); nd; nd = rb_next(nd)) {
+				struct hptable_node *touch;
+				touch = rb_entry(nd, struct hptable_node, hptable_rb);
+				index = ((unsigned long)touch-scm_head->data)/sizeof(struct hptable_node);
+				usage_map[index] = 1;
+			}
+		}
+		/* freelist */
+		for (i=0; i<scm_head->len; ++i) {
+			if (usage_map[i] == 0) {
+				tmp= (struct table_freelist *)kmalloc(sizeof(struct table_freelist), GFP_KERNEL);
+				tmp->node_addr = (char *)&scm_head->data + i*sizeof(struct ptable_node);
+				list_add_tail(&tmp->list, &table_freelist.list);
+			}
+		}
 	}
+	/* TODO test SCM is not new */
 	scm_print_freelist();
 }

@@ -22,8 +22,8 @@ struct hptable_node;
 
 struct scm_head {
 	unsigned long magic;
-	struct ptable_node *ptable_ptr;
-	struct hptable_node *hptable_ptr;
+	struct rb_root ptable_rb;
+	struct rb_root hptable_rb;
 	unsigned long total_size; /* the total memory length (bytes) */
 	unsigned long len; /* item number */
 	char data[0];
@@ -68,6 +68,6 @@ struct table_freelist {
 
 /* linux/mm/scm.c */
 void scm_ptable_boot(void);
-void scm_freelist_init(void);
+void scm_freelist_boot(void);
 
 #endif /* _SCM_H */
