@@ -1,9 +1,28 @@
 #include <linux/scm.h>
 #include <linux/memblock.h>
 #include <linux/slab.h>
+#include <linux/list.h>
+#include <linux/rbtree.h>
 
 static struct scm_head *scm_head;
-static struct table_freelist *table_freelist;
+static struct table_freelist table_freelist = {
+	.node_addr = NULL,
+	.list = LIST_HEAD_INIT(table_freelist.list),
+};
+
+/* FOR DEBUG */
+static void scm_print_freelist(void)
+{
+	struct table_freelist *tmp;
+	int i=0;
+	daisy_printk("freelist: ");
+	list_for_each_entry(tmp, &table_freelist.list, list) {
+		daisy_printk("%lu\t", tmp->node_addr);
+		++i;
+		if (i>=10) break;
+	}
+	daisy_printk("\n");
+}
 
 static void reserve_scm_ptable_memory(void)
 {
@@ -31,7 +50,7 @@ static void reserve_scm_ptable_memory(void)
 }
 
 /* Init a total new SCM (no data) */
-static void scm_ptable_init()
+static void scm_ptable_init(void)
 {
 	scm_head->magic = SCM_MAGIC;
 	scm_head->ptable_ptr = NULL;
@@ -77,22 +96,23 @@ void scm_ptable_boot(void)
 /* Just traverse the tree to init the freelist in DRAM */
 void scm_freelist_init(void)
 {
+	struct table_freelist *tmp;
+	unsigned long i;
 	/* this SCM is new */
 	if (scm_head->ptable_ptr == NULL && scm_head->hptable_ptr == NULL) {
+		for (i=0; i<scm_head->len; ++i) {
+			tmp= (struct table_freelist *)kmalloc(sizeof(struct table_freelist), GFP_KERNEL);
+			tmp->node_addr = (char *)&scm_head->data + i*sizeof(struct ptable_node);
+			list_add_tail(&tmp->list, &table_freelist.list);
+		}
+	} else {
+	/* SCM is not new */
+		/* ptable */
+		if (scm_head->ptable_ptr) {
+			struct ptable_node *root;
 
-		return;
+		}
+		/* hptable */
 	}
-	/* ptable */
-	if (scm_head->ptable_ptr) {
-		struct ptable_node *root;
-
-	}
-	/* hptable */
-}
-
-void scm_test_code(void)
-{
-	char *test;
-	daisy_printk("%s %s\n", __FILE__, __func__);
-	test = kmalloc(10, GFP_KERNEL);
+	scm_print_freelist();
 }

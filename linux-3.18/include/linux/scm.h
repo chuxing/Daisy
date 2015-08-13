@@ -70,6 +70,4 @@ struct table_freelist {
 void scm_ptable_boot(void);
 void scm_freelist_init(void);
 
-void scm_test_code(void);
-
 #endif /* _SCM_H */
