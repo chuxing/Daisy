@@ -708,8 +708,13 @@ __SYSCALL(__NR_memfd_create, sys_memfd_create)
 #define __NR_bpf 280
 __SYSCALL(__NR_bpf, sys_bpf)
 
+/*PCM system calls are defined here*/
+#define __NR_p_mmap 322
+__SYSCALL(__NR_p_mmap, sys_p_mmap)
+/*PCM system call definitions end here*/
+
 #undef __NR_syscalls
-#define __NR_syscalls 281
+#define __NR_syscalls 282
 
 /*
  * All syscalls below here should go away really,
