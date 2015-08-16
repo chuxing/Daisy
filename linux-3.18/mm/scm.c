@@ -24,6 +24,11 @@ static void scm_print_freelist(void)
 	daisy_printk("\n");
 }
 
+static void scm_fake_root(void)
+{
+}
+/* end FOR DEBUG */
+
 static void reserve_scm_ptable_memory(void)
 {
 	size_t size;
@@ -98,6 +103,7 @@ void scm_freelist_boot(void)
 {
 	struct table_freelist *tmp;
 	unsigned long i;
+
 	/* this SCM is new */
 	if (RB_EMPTY_ROOT(scm_head->ptable_rb) && RB_EMPTY_ROOT(scm_head->hptable_rb)) {
 		for (i=0; i<scm_head->len; ++i) {
@@ -146,4 +152,101 @@ void scm_freelist_boot(void)
 	}
 	/* TODO test SCM is not new */
 	scm_print_freelist();
+}
+
+/* pop an item from freelist, free the item, return the addr (NULL if no more) */
+static void *get_freenode_addr(void)
+{
+	void *ret;
+	struct table_freelist *entry;
+	if (list_empty(&table_freelist.list)) {
+		return NULL;
+	}
+	entry = list_first_entry(&table_freelist.list, struct table_freelist, list);
+	ret = entry->node_addr;
+	kfree(entry);
+	return ret;
+}
+
+/* return -1 if error & 0 if success */
+int insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size)
+{
+	struct ptable_node *new;
+	new = (struct ptable_node *)get_freenode_addr();
+	if (!new) {
+		return -1;
+	}
+	new->_id = _id;
+	new->phys_addr = phys_addr;
+	new->size = size;
+	new->flags = 0;
+	new->hptable_id = 0;
+	/* insert to rbtree */
+
+}
+
+/* return NULL if not found */
+static struct ptable_node *search_ptable_node_rb(u64 _id, unsigned long flags)
+{
+	struct rb_node *n;
+
+	if (flags != 0 || flags != 1) {
+		return NULL;
+	}
+	n = scm_head->ptable_rb.rb_node;
+	while (n) {
+		struct ptable_node *touch = rb_entry(n, struct ptable_node, ptable_rb);
+		if (_id < touch->_id) {
+			n = n->rb_left;
+		} else if (_id > touch->_id) {
+			n = n->rb_right;
+		} else {
+			/* do a simple check */
+			if (touch->flags == flags) {
+				return touch;
+			} else {
+				return NULL;
+			}
+		}
+	}
+	return NULL;
+}
+
+/* return NULL if not found */
+static struct hptable_node *search_hptable_node_rb(u64 _id)
+{
+	struct rb_node *n;
+
+	n = scm_head->hptable_rb.rb_node;
+	while (n) {
+		struct hptable_node *touch = rb_entry(n, struct hptable_node, hptable_rb);
+		if (_id < touch->_id) {
+			n = n->rb_left;
+		} else if (_id > touch->_id) {
+			n = n->rb_right;
+		} else {
+			/* do a simple check */
+			if (touch->flags == HEAP_REGION) {
+				return touch;
+			} else {
+				return NULL;
+			}
+		}
+	}
+	return NULL;
+}
+
+struct ptable_node *search_big_region_node(u64 _id)
+{
+	return search_ptable_node_rb(_id, BIG_MEM_REGION);
+}
+
+struct ptable_node *search_small_region_node(u64 _id)
+{
+	return search_ptable_node_rb(_id, SMALL_MEM_REGION);
+}
+
+struct hptable_node *search_heap_region_node(u64 _id)
+{
+	return search_hptable_node_rb(_id);
 }
