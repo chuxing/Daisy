@@ -169,8 +169,10 @@ static void *get_freenode_addr(void)
 }
 
 /* return -1 if error & 0 if success */
-int insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size)
+static int insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size, u64 hptable_id, unsigned long flags)
 {
+	struct rb_node **n = &scm_head->ptable_rb.rb_node;
+	struct rb_node *parent = NULL;
 	struct ptable_node *new;
 	new = (struct ptable_node *)get_freenode_addr();
 	if (!new) {
@@ -179,10 +181,69 @@ int insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size)
 	new->_id = _id;
 	new->phys_addr = phys_addr;
 	new->size = size;
-	new->flags = 0;
-	new->hptable_id = 0;
-	/* insert to rbtree */
+	new->flags = flags;
+	new->hptable_id = hptable_id;
 
+	/* insert to rbtree */
+	while (*n) {
+		parent = *n;
+		struct ptable_node *touch = rb_entry(parent, struct ptable_node, ptable_rb);
+		if (_id < touch->_id) {
+			n = &(*n)->rb_left;
+		} else if (_id > touch->_id) {
+			n = &(*n)->rb_right;
+		} else {
+			return -1;
+		}
+	}
+	rb_link_node(new, parent, n);
+	rb_insert_color(new, &scm_head->ptable_rb);
+	return 0;
+}
+
+static int insert_hptable_node_rb(u64 _id, u64 phys_addr, u64 size)
+{
+	struct rb_node **n = &scm_head->hptable_rb.rb_node;
+	struct rb_node *parent = NULL;
+	struct hptable_node *new;
+	new = (struct hptable_node *)get_freenode_addr();
+	if (!new) {
+		return -1;
+	}
+	new->_id = _id;
+	new->phys_addr = phys_addr;
+	new->size = size;
+	new->flags = HEAP_REGION;
+	/* insert to rbtree */
+	while (*n) {
+		parent = *n;
+		struct hptable_node *touch = rb_entry(parent, struct hptable_node, hptable_rb);
+		if (_id < touch->_id) {
+			n = &(*n)->rb_left;
+		} else if (_id > touch->_id) {
+			n = &(*n)->rb_right;
+		} else {
+			return -1;
+		}
+	}
+	rb_link_node(new, parent, n);
+	rb_insert_color(new, &scm_head->hptable_rb);
+	return 0;
+}
+
+int insert_big_region_node(u64 _id, u64 phys_addr, u64 size)
+{
+	return insert_ptable_node_rb(_id, phys_addr, size, 0, BIG_MEM_REGION);
+}
+
+int insert_small_region_node(u64 _id, u64 phys_addr, u64 size, u64 hptable_id)
+{
+	return insert_ptable_node_rb(_id, phys_addr, size, hptable_id, SMALL_MEM_REGION);
+}
+
+int insert_heap_region_node(u64 _id, u64 phys_addr, u64 size)
+{
+	return insert_hptable_node_rb(_id, phys_addr, size);
 }
 
 /* return NULL if not found */

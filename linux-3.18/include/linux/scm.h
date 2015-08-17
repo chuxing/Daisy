@@ -16,6 +16,7 @@
 /* 128M pfns 128*1024/4*/
 #define SCM_PFN_NUM 32768UL
 #define SCM_MAGIC 0x01234567
+
 /* flags in struct node */
 /* TODO use bit such as 0001 0002 0004 0008 0010 */
 #define BIG_MEM_REGION 0
@@ -81,5 +82,8 @@ void scm_freelist_boot(void);
 struct ptable_node *search_big_region_node(u64 _id);
 struct ptable_node *search_small_region_node(u64 _id);
 struct hptable_node *search_heap_region_node(u64 _id);
+int insert_big_region_node(u64 _id, u64 phys_addr, u64 size);
+int insert_small_region_node(u64 _id, u64 phys_addr, u64 size, u64 hptable_id);
+int insert_heap_region_node(u64 _id, u64 phys_addr, u64 size);
 
 #endif /* _SCM_H */
