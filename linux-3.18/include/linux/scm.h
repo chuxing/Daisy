@@ -85,5 +85,8 @@ struct hptable_node *search_heap_region_node(u64 _id);
 int insert_big_region_node(u64 _id, u64 phys_addr, u64 size);
 int insert_small_region_node(u64 _id, u64 phys_addr, u64 size, u64 hptable_id);
 int insert_heap_region_node(u64 _id, u64 phys_addr, u64 size);
+int delete_big_region_node(u64 _id);
+int delete_small_region_node(u64 _id);
+int delete_heap_region_node(u64 _id);
 
 #endif /* _SCM_H */

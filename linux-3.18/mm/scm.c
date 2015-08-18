@@ -311,3 +311,52 @@ struct hptable_node *search_heap_region_node(u64 _id)
 {
 	return search_hptable_node_rb(_id);
 }
+
+static void add_freenode_addr(void *addr)
+{
+	struct table_freelist *tmp;
+	tmp= (struct table_freelist *)kmalloc(sizeof(struct table_freelist), GFP_KERNEL);
+	tmp->node_addr = addr;
+	list_add_tail(&tmp->list, &table_freelist.list);
+}
+
+/* -1 error, 0 success */
+static int delete_ptable_node_rb(u64 _id, unsigned long flags)
+{
+	struct ptable_node *n;
+	n = search_ptable_node_rb(_id, flags);
+	if (!n) {
+		return -1;
+	}
+	rb_erase(&n->ptable_rb, &scm_head->ptable_rb);
+	add_freenode_addr((void *)n);
+	return 0;
+}
+
+static int delete_hptable_node_rb(u64 _id)
+{
+	struct hptable_node *n;
+	n = search_hptable_node_rb(_id);
+	if (!n) {
+		return -1;
+	}
+	rb_erase(&n->hptable_rb, &scm_head->hptable_rb);
+	add_freenode_addr((void *)n);
+	return 0;
+}
+
+
+int delete_big_region_node(u64 _id)
+{
+	return delete_ptable_node_rb(_id, BIG_MEM_REGION);
+}
+
+int delete_small_region_node(u64 _id)
+{
+	return delete_ptable_node_rb(_id, SMALL_MEM_REGION);
+}
+
+int delete_heap_region_node(u64 _id)
+{
+	return delete_hptable_node_rb(_id);
+}
