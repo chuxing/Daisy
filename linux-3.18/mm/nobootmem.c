@@ -173,8 +173,8 @@ void __init reset_all_zones_managed_pages(void)
  */
 unsigned long __init free_all_bootmem(void)
 {
-	daisy_printk("%s %s\n", __FILE__, __func__);
 	unsigned long pages;
+	daisy_printk("%s %s\n", __FILE__, __func__);
 
 	reset_all_zones_managed_pages();
 

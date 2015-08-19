@@ -1,7 +1,7 @@
-make -j4
+make -j8
 watch "cat linux-3.18/1.log | grep 'Daisy'"
 qemu-system-x86_64 -hda ../linux-0.2.img -kernel arch/x86_64/boot/bzImage -append "root=/dev/sda console=ttyS0 rdinit=/bin/sh" -m 5120 -nographic &> 1.log
 pkill -f qemu
 
-pkill -f qemu; make -j4
+pkill -f qemu; make -j8
 qemu-system-x86_64 -hda ../linux-0.2.img -kernel arch/x86_64/boot/bzImage -append "root=/dev/sda console=ttyS0 rdinit=/bin/sh" -m 5120 -nographic | grep 'Daisy'

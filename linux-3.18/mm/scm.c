@@ -27,6 +27,11 @@ static void scm_print_freelist(void)
 static void scm_fake_root(void)
 {
 }
+
+void scm_full_test(void)
+{
+
+}
 /* end FOR DEBUG */
 
 static void reserve_scm_ptable_memory(void)
@@ -105,7 +110,7 @@ void scm_freelist_boot(void)
 	unsigned long i;
 
 	/* this SCM is new */
-	if (RB_EMPTY_ROOT(scm_head->ptable_rb) && RB_EMPTY_ROOT(scm_head->hptable_rb)) {
+	if (RB_EMPTY_ROOT(&scm_head->ptable_rb) && RB_EMPTY_ROOT(&scm_head->hptable_rb)) {
 		for (i=0; i<scm_head->len; ++i) {
 			tmp= (struct table_freelist *)kmalloc(sizeof(struct table_freelist), GFP_KERNEL);
 			tmp->node_addr = (char *)&scm_head->data + i*sizeof(struct ptable_node);
@@ -116,28 +121,31 @@ void scm_freelist_boot(void)
 	 * SCM is not new
 	 * Reference: find_vma browse_rb...
 	 * */
-		char usage_map[scm_head->len] = {0};
 		unsigned long index;
+		char usage_map[scm_head->len];
+		for (i=0; i<scm_head->len; ++i) {
+			usage_map[i] = 0;
+		}
 		/* ptable */
-		if (!RB_EMPTY_ROOT(scm_head->ptable_rb)) {
-			struct ptable_node *nd;
+		if (!RB_EMPTY_ROOT(&scm_head->ptable_rb)) {
+			struct rb_node *nd;
 			for (nd = rb_first(&scm_head->ptable_rb); nd; nd = rb_next(nd)) {
 				struct ptable_node *touch;
 				touch = rb_entry(nd, struct ptable_node, ptable_rb);
 				/* ignore small memory region */
 				if (touch->flags == 0) {
-					index = ((unsigned long)touch-scm_head->data)/sizeof(struct ptable_node);
+					index = ((unsigned long)touch-(unsigned long)&scm_head->data)/sizeof(struct ptable_node);
 					usage_map[index] = 1;
 				}
 			}
 		}
 		/* hptable */
-		if (!RB_EMPTY_ROOT(scm_head->hptable_rb)) {
-			struct hptable_node *nd;
+		if (!RB_EMPTY_ROOT(&scm_head->hptable_rb)) {
+			struct rb_node *nd;
 			for (nd = rb_first(&scm_head->hptable_rb); nd; nd = rb_next(nd)) {
 				struct hptable_node *touch;
 				touch = rb_entry(nd, struct hptable_node, hptable_rb);
-				index = ((unsigned long)touch-scm_head->data)/sizeof(struct hptable_node);
+				index = ((unsigned long)touch-(unsigned long)&scm_head->data)/sizeof(struct hptable_node);
 				usage_map[index] = 1;
 			}
 		}
@@ -173,7 +181,7 @@ static int insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size, u64 hptable_i
 {
 	struct rb_node **n = &scm_head->ptable_rb.rb_node;
 	struct rb_node *parent = NULL;
-	struct ptable_node *new;
+	struct ptable_node *new, *touch;
 	new = (struct ptable_node *)get_freenode_addr();
 	if (!new) {
 		return -1;
@@ -187,7 +195,7 @@ static int insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size, u64 hptable_i
 	/* insert to rbtree */
 	while (*n) {
 		parent = *n;
-		struct ptable_node *touch = rb_entry(parent, struct ptable_node, ptable_rb);
+		touch = rb_entry(parent, struct ptable_node, ptable_rb);
 		if (_id < touch->_id) {
 			n = &(*n)->rb_left;
 		} else if (_id > touch->_id) {
@@ -196,8 +204,8 @@ static int insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size, u64 hptable_i
 			return -1;
 		}
 	}
-	rb_link_node(new, parent, n);
-	rb_insert_color(new, &scm_head->ptable_rb);
+	rb_link_node(&new->ptable_rb, parent, n);
+	rb_insert_color(&new->ptable_rb, &scm_head->ptable_rb);
 	return 0;
 }
 
@@ -205,7 +213,7 @@ static int insert_hptable_node_rb(u64 _id, u64 phys_addr, u64 size)
 {
 	struct rb_node **n = &scm_head->hptable_rb.rb_node;
 	struct rb_node *parent = NULL;
-	struct hptable_node *new;
+	struct hptable_node *new, *touch;
 	new = (struct hptable_node *)get_freenode_addr();
 	if (!new) {
 		return -1;
@@ -217,7 +225,7 @@ static int insert_hptable_node_rb(u64 _id, u64 phys_addr, u64 size)
 	/* insert to rbtree */
 	while (*n) {
 		parent = *n;
-		struct hptable_node *touch = rb_entry(parent, struct hptable_node, hptable_rb);
+		touch = rb_entry(parent, struct hptable_node, hptable_rb);
 		if (_id < touch->_id) {
 			n = &(*n)->rb_left;
 		} else if (_id > touch->_id) {
@@ -226,8 +234,8 @@ static int insert_hptable_node_rb(u64 _id, u64 phys_addr, u64 size)
 			return -1;
 		}
 	}
-	rb_link_node(new, parent, n);
-	rb_insert_color(new, &scm_head->hptable_rb);
+	rb_link_node(&new->hptable_rb, parent, n);
+	rb_insert_color(&new->hptable_rb, &scm_head->hptable_rb);
 	return 0;
 }
 
@@ -250,13 +258,13 @@ int insert_heap_region_node(u64 _id, u64 phys_addr, u64 size)
 static struct ptable_node *search_ptable_node_rb(u64 _id, unsigned long flags)
 {
 	struct rb_node *n;
-
+	struct ptable_node *touch;
 	if (flags != 0 || flags != 1) {
 		return NULL;
 	}
 	n = scm_head->ptable_rb.rb_node;
 	while (n) {
-		struct ptable_node *touch = rb_entry(n, struct ptable_node, ptable_rb);
+		touch = rb_entry(n, struct ptable_node, ptable_rb);
 		if (_id < touch->_id) {
 			n = n->rb_left;
 		} else if (_id > touch->_id) {
@@ -277,10 +285,10 @@ static struct ptable_node *search_ptable_node_rb(u64 _id, unsigned long flags)
 static struct hptable_node *search_hptable_node_rb(u64 _id)
 {
 	struct rb_node *n;
-
+	struct hptable_node *touch;
 	n = scm_head->hptable_rb.rb_node;
 	while (n) {
-		struct hptable_node *touch = rb_entry(n, struct hptable_node, hptable_rb);
+		touch = rb_entry(n, struct hptable_node, hptable_rb);
 		if (_id < touch->_id) {
 			n = n->rb_left;
 		} else if (_id > touch->_id) {

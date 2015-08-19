@@ -89,4 +89,6 @@ int delete_big_region_node(u64 _id);
 int delete_small_region_node(u64 _id);
 int delete_heap_region_node(u64 _id);
 
+void scm_full_test(void);
+
 #endif /* _SCM_H */
