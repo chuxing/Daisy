@@ -2877,7 +2877,7 @@ static void do_fault_around(struct vm_area_struct *vma, unsigned long address,
 	vmf.flags = flags;
 	vma->vm_ops->map_pages(vma, &vmf);
 }
-
+struct page* pg=NULL;
 static int do_read_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		unsigned long address, pmd_t *pmd,
 		pgoff_t pgoff, unsigned int flags, pte_t orig_pte)
@@ -2901,7 +2901,27 @@ static int do_read_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		pte_unmap_unlock(pte, ptl);
 	}
 
-	ret = __do_fault(vma, address, pgoff, flags, &fault_page);
+	if(vma->vm_flags & VM_PCM)
+	{
+		printk("============read pg=%lx\n",pg);
+		if(pg)
+		{
+			fault_page=pg;
+			printk("============count=%lx,mapcount=%lx\n",pg->_count,pg->_mapcount);
+		}
+		else
+		{
+			pg=alloc_page(__GFP_MOVABLE);
+			printk("============alloc pfn=%lx\n",page_to_pfn(pg));
+			printk("============count=%lx,mapcount=%lx\n",pg->_count,pg->_mapcount);
+			fault_page=pg;//32M
+		}
+		ret=0;
+	}
+	else
+	{
+		ret = __do_fault(vma, address, pgoff, flags, &fault_page);
+	}
 	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE | VM_FAULT_RETRY)))
 		return ret;
 

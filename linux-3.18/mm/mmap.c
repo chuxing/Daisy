@@ -3368,7 +3368,7 @@ unsigned long do_p_mmap_pgoff(unsigned long addr,
 	 * of the memory object, so we don't do any here.
 	 */
 	vm_flags = calc_vm_prot_bits(prot) | calc_vm_flag_bits(flags) |
-			mm->def_flags | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC | VM_PCM;
+			mm->def_flags | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC | VM_PCM | VM_LOCKED | VM_SHARED;
 
 	if (flags & MAP_LOCKED)
 		if (!can_do_mlock())
@@ -3418,7 +3418,7 @@ unsigned long do_p_mmap_pgoff(unsigned long addr,
 SYSCALL_DEFINE4(p_mmap, unsigned long, addr, unsigned long, len,
 		unsigned long, prot,	unsigned long, id)
 {
-	unsigned int flags=MAP_ANONYMOUS|MAP_PRIVATE;
+	unsigned int flags=MAP_ANONYMOUS|MAP_SHARED;
 	unsigned long retval = -EBADF;
 	struct mm_struct *mm = current->mm;
 	unsigned long populate;
