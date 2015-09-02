@@ -24,8 +24,31 @@ static void scm_print_freelist(void)
 	daisy_printk("\n");
 }
 
-static void scm_fake_root(void)
+static void scm_fake_initdata(void)
 {
+	/**
+	 * ----scm_head-----
+	 * sizeof(struct scm_head)
+	 *   ptable_rb  0
+	 *   hptable_rb 2
+	 * sizeof(struct node) 0
+	 * sizeof(struct node) 1
+	 * sizeof(struct node) 2  l3 r4
+	 * sizeof(struct node) 3
+	 * sizeof(struct node) 4
+	 */
+	if (!scm_head) return;
+	struct ptable_node *pnode;
+	struct hptable_node *hnode, *tmp;
+	pnode = (char *)&scm_head->data + 0*sizeof(struct ptable_node);
+	scm_head->ptable_rb = pnode->ptable_rb;
+	hnode = (char *)&scm_head->data + 2*sizeof(struct ptable_node);
+	scm_head->hptable_rb = hnode->hptable_rb;
+	tmp = (char *)&scm_head->data + 3*sizeof(struct ptable_node);
+	hnode->hptable_rb.rb_left = tmp->hptable_rb;
+	tmp = (char *)&scm_head->data + 4*sizeof(struct ptable_node);
+	hnode->hptable_rb.rb_right = tmp->hptable_rb;
+	// seems great =.=
 }
 
 void scm_full_test(void)
@@ -56,6 +79,10 @@ static void reserve_scm_ptable_memory(void)
 	daisy_printk("scm_start_phys, phys: %lu %lu\n", scm_start_phys, phys);
 	daisy_printk("Get pfn: %lu， max_pfn: %lu\n", phys >> PAGE_SHIFT, max_pfn_mapped);
 	/* record the size */
+	/* TODO if scm has old data, total_size cannot change, do a realloc; now just check */
+	if (scm_head->magic == SCM_MAGIC && scm_head->total_size !=size) {
+		daisy_printk("TODO we need a warning or realloc here.\n");
+	}
 	scm_head->total_size = size;
 }
 
@@ -244,9 +271,9 @@ int insert_big_region_node(u64 _id, u64 phys_addr, u64 size)
 	return insert_ptable_node_rb(_id, phys_addr, size, 0, BIG_MEM_REGION);
 }
 
-int insert_small_region_node(u64 _id, u64 phys_addr, u64 size, u64 hptable_id)
+int insert_small_region_node(u64 _id, u64 offset, u64 size, u64 hptable_id)
 {
-	return insert_ptable_node_rb(_id, phys_addr, size, hptable_id, SMALL_MEM_REGION);
+	return insert_ptable_node_rb(_id, offset, size, hptable_id, SMALL_MEM_REGION);
 }
 
 int insert_heap_region_node(u64 _id, u64 phys_addr, u64 size)
