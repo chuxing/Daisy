@@ -615,7 +615,7 @@ kernel_physical_mapping_init(unsigned long start,
 	bool pgd_changed = false;
 	unsigned long next, last_map_addr = end;
 	unsigned long addr;
-
+	daisy_printk("%s %s\n", __FILE__, __func__);
 	start = (unsigned long)__va(start);
 	end = (unsigned long)__va(end);
 	addr = start;

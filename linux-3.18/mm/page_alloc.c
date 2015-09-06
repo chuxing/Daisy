@@ -3360,21 +3360,27 @@ static void zoneref_set_zone(struct zone *zone, struct zoneref *zoneref)
 static int build_zonelists_node(pg_data_t *pgdat, struct zonelist *zonelist,
 				int nr_zones)
 {
-	struct zone *zone;
+	struct zone *zone, *scm_zone = NULL;
 	enum zone_type zone_type = MAX_NR_ZONES;
 
 	daisy_printk("build_zonelists_node pgdat->node_id: %d, nr_zones: %d\n", pgdat->node_id, pgdat->nr_zones);
+	/*do a trick here, to let SCM zone to be special*/
 	do {
 		zone_type--;
 		zone = pgdat->node_zones + zone_type;
 		daisy_printk("zone->present_pages: %s %lu\n", zone->name, zone->present_pages);
-		if (populated_zone(zone)) {
+		if (zone_type == ZONE_SCM) {
+			scm_zone = zone;
+		} else if (populated_zone(zone) && zone_type != ZONE_SCM) {
 			zoneref_set_zone(zone,
 				&zonelist->_zonerefs[nr_zones++]);
 			check_highest_zone(zone_type);
 		}
 	} while (zone_type);
 
+	if (scm_zone) {
+		zoneref_set_zone(scm_zone, &zonelist->_zonerefs[nr_zones++]);
+	}
 	return nr_zones;
 }
 
@@ -3674,9 +3680,18 @@ static void print_pgdat(pg_data_t *pgdat)
 			if (z == NULL) {
 				break;
 			}
-			daisy_printk("%s ", z->name);
+			daisy_printk("zone->managed_pages: %s %lu\n", z->name, z->managed_pages);
 		}
 		daisy_printk("...\n");
+	}
+}
+
+void print_all_pgdat(void)
+{
+	int nid;
+	for_each_online_node(nid) {
+		pg_data_t *pgdat = NODE_DATA(nid);
+		print_pgdat(pgdat);
 	}
 }
 

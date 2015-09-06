@@ -569,7 +569,9 @@ asmlinkage __visible void __init start_kernel(void)
 	mm_init();
 
 	/* After mm_init we can use kmalloc and we can never use memblock*/
+	print_all_pgdat();
 	scm_freelist_boot();
+	scm_full_test();
 
 	/*
 	 * Set up the scheduler prior starting any interrupts (such as the

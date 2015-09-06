@@ -5,6 +5,7 @@
 #include <linux/rbtree.h>
 
 static struct scm_head *scm_head;
+static u64 freecount = 0; // count freelist
 static struct table_freelist table_freelist = {
 	.node_addr = NULL,
 	.list = LIST_HEAD_INIT(table_freelist.list),
@@ -15,69 +16,74 @@ static void scm_print_freelist(void)
 {
 	struct table_freelist *tmp;
 	int i=0;
-	daisy_printk("freelist: ");
+	daisy_printk("freelist %lu: ", freecount);
 	list_for_each_entry(tmp, &table_freelist.list, list) {
-		daisy_printk("%lu\t", tmp->node_addr);
+		daisy_printk("%lu %lu\t", tmp->node_addr, ((unsigned long)tmp->node_addr-(unsigned long)&scm_head->data)/sizeof(struct ptable_node));
 		++i;
 		if (i>=10) break;
 	}
 	daisy_printk("\n");
 }
 
+static void scm_print_pnode(struct ptable_node *n)
+{
+	if (n) {
+		daisy_printk("%lu\n", n->_id);
+	} else {
+		daisy_printk("NULL\n");
+	}
+}
+
 static void scm_fake_initdata(void)
 {
-	/**
-	 * ----scm_head-----
-	 * sizeof(struct scm_head)
-	 *   ptable_rb  0
-	 *   hptable_rb 2
-	 * sizeof(struct node) 0
-	 * sizeof(struct node) 1
-	 * sizeof(struct node) 2  l3 r4
-	 * sizeof(struct node) 3
-	 * sizeof(struct node) 4
-	 */
-	if (!scm_head) return;
 	struct ptable_node *pnode;
-	struct hptable_node *hnode, *tmp;
-	pnode = (char *)&scm_head->data + 0*sizeof(struct ptable_node);
-	scm_head->ptable_rb = pnode->ptable_rb;
-	hnode = (char *)&scm_head->data + 2*sizeof(struct ptable_node);
-	scm_head->hptable_rb = hnode->hptable_rb;
-	tmp = (char *)&scm_head->data + 3*sizeof(struct ptable_node);
-	hnode->hptable_rb.rb_left = tmp->hptable_rb;
-	tmp = (char *)&scm_head->data + 4*sizeof(struct ptable_node);
-	hnode->hptable_rb.rb_right = tmp->hptable_rb;
-	// seems great =.=
+	struct hptable_node *hnode;
+
+	if (!scm_head) return;
+
+	pnode = (struct ptable_node *)((char *)&scm_head->data + 3*sizeof(struct ptable_node));
+	scm_head->ptable_rb.rb_node = &pnode->ptable_rb;
+	hnode = (struct hptable_node *)((char *)&scm_head->data + 5*sizeof(struct ptable_node));
+	scm_head->hptable_rb.rb_node = &hnode->hptable_rb;
 }
 
 void scm_full_test(void)
 {
-
+	struct ptable_node *n;
+	insert_big_region_node(345, 0, 0);
+	scm_print_freelist();
+	insert_small_region_node(344, 0, 0, 557);
+	insert_heap_region_node(557, 0, 0);
+	insert_big_region_node(342, 0, 0);
+	scm_print_freelist();
+	n = search_big_region_node(342);
+	scm_print_pnode(n);
+	n = search_small_region_node(344);
+	scm_print_pnode(n);
+	n = search_heap_region_node(557);
+	scm_print_pnode(n);
+	delete_big_region_node(342);
+	delete_heap_region_node(557);
+	delete_small_region_node(344);
+	delete_big_region_node(345);
+	scm_print_freelist();
 }
 /* end FOR DEBUG */
 
 static void reserve_scm_ptable_memory(void)
 {
-	size_t size;
+	unsigned long size;
 	phys_addr_t phys;
-	phys_addr_t scm_start_phys;
 
 	/* get the first 1024 scm pages */
-	size = 1024 * PAGE_SIZE;
+	size = SCM_PTABLE_PFN_NUM * PAGE_SIZE;
 	/* pages in ZONE_SCM */
-	scm_start_phys = PFN_PHYS(max_pfn_mapped)-(SCM_PFN_NUM<<PAGE_SHIFT);
-	phys = memblock_find_in_range(scm_start_phys, scm_start_phys + size, size, PAGE_SIZE);
-	if (!phys) {
-		daisy_printk("Error when getting persist table memory!!!!\n");
-		/* TODO BUG here must abort */
-		return;
-	}
+	phys = PFN_PHYS(max_pfn_mapped)-(SCM_PFN_NUM<<PAGE_SHIFT);
 	memblock_reserve(phys, size);
 	scm_head = (struct scm_head*)__va(phys);
 
-	daisy_printk("scm_start_phys, phys: %lu %lu\n", scm_start_phys, phys);
-	daisy_printk("Get pfn: %lu， max_pfn: %lu\n", phys >> PAGE_SHIFT, max_pfn_mapped);
+	daisy_printk("scm_start_phys: %lu\n", phys);
+	daisy_printk("Get start pfn: %lu， max_pfn: %lu\n", phys >> PAGE_SHIFT, max_pfn_mapped);
 	/* record the size */
 	/* TODO if scm has old data, total_size cannot change, do a realloc; now just check */
 	if (scm_head->magic == SCM_MAGIC && scm_head->total_size !=size) {
@@ -97,6 +103,29 @@ static void scm_ptable_init(void)
 	/* do i need a whole memset (set to 0)? */
 }
 
+static void scm_reserve_used_memory(void) {
+	struct rb_node *nd;
+	/* ptable */
+	if (!RB_EMPTY_ROOT(&scm_head->ptable_rb)) {
+		for (nd = rb_first(&scm_head->ptable_rb); nd; nd = rb_next(nd)) {
+			struct ptable_node *touch;
+			touch = rb_entry(nd, struct ptable_node, ptable_rb);
+			/* ignore small memory region */
+			if (touch->flags == BIG_MEM_REGION) {
+				memblock_reserve(touch->phys_addr, touch->size);
+			}
+		}
+	}
+	/* hptable */
+	if (!RB_EMPTY_ROOT(&scm_head->hptable_rb)) {
+		for (nd = rb_first(&scm_head->hptable_rb); nd; nd = rb_next(nd)) {
+			struct hptable_node *touch;
+			touch = rb_entry(nd, struct hptable_node, hptable_rb);
+			memblock_reserve(touch->phys_addr, touch->size);
+		}
+	}
+}
+
 /**
  * scm persist table boot step
  * reference to: numa_alloc_distance & numa_reset_distance
@@ -104,12 +133,6 @@ static void scm_ptable_init(void)
 void scm_ptable_boot(void)
 {
 	reserve_scm_ptable_memory();
-	/**
-	 * unsigned long *hacklen = ((char *)scm_head+sizeof(unsigned long)+2*sizeof(void*));
-	 * *hacklen = 735;
-	 *
-	 * to test: make fake data here
-	 * */
 
 	/**
 	 * check magic number to decide how to init
@@ -124,65 +147,54 @@ void scm_ptable_boot(void)
 	if (scm_head->magic != SCM_MAGIC) {
 		/* this is a new SCM */
 		scm_ptable_init();
+		//scm_fake_initdata();
 	} else {
 		/* SCM with data! */
-		/* do_nothing this time */
+		scm_reserve_used_memory();
 	}
 }
 
-/* Just traverse the tree to init the freelist in DRAM */
+/**
+ * Just traverse the tree to init the freelist in DRAM
+ * memblock reserve at the same time
+ */
 void scm_freelist_boot(void)
 {
 	struct table_freelist *tmp;
-	unsigned long i;
-
-	/* this SCM is new */
-	if (RB_EMPTY_ROOT(&scm_head->ptable_rb) && RB_EMPTY_ROOT(&scm_head->hptable_rb)) {
-		for (i=0; i<scm_head->len; ++i) {
-			tmp= (struct table_freelist *)kmalloc(sizeof(struct table_freelist), GFP_KERNEL);
-			tmp->node_addr = (char *)&scm_head->data + i*sizeof(struct ptable_node);
-			list_add_tail(&tmp->list, &table_freelist.list);
-		}
-	} else {
-	/**
-	 * SCM is not new
-	 * Reference: find_vma browse_rb...
-	 * */
-		unsigned long index;
-		char usage_map[scm_head->len];
-		for (i=0; i<scm_head->len; ++i) {
-			usage_map[i] = 0;
-		}
-		/* ptable */
-		if (!RB_EMPTY_ROOT(&scm_head->ptable_rb)) {
-			struct rb_node *nd;
-			for (nd = rb_first(&scm_head->ptable_rb); nd; nd = rb_next(nd)) {
-				struct ptable_node *touch;
-				touch = rb_entry(nd, struct ptable_node, ptable_rb);
-				/* ignore small memory region */
-				if (touch->flags == 0) {
-					index = ((unsigned long)touch-(unsigned long)&scm_head->data)/sizeof(struct ptable_node);
-					usage_map[index] = 1;
-				}
-			}
-		}
-		/* hptable */
-		if (!RB_EMPTY_ROOT(&scm_head->hptable_rb)) {
-			struct rb_node *nd;
-			for (nd = rb_first(&scm_head->hptable_rb); nd; nd = rb_next(nd)) {
-				struct hptable_node *touch;
-				touch = rb_entry(nd, struct hptable_node, hptable_rb);
-				index = ((unsigned long)touch-(unsigned long)&scm_head->data)/sizeof(struct hptable_node);
+	unsigned long index;
+	struct rb_node *nd;
+	char usage_map[scm_head->len];
+	for (index = 0; index < scm_head->len; ++index) {
+		usage_map[index] = 0;
+	}
+	/* ptable */
+	if (!RB_EMPTY_ROOT(&scm_head->ptable_rb)) {
+		for (nd = rb_first(&scm_head->ptable_rb); nd; nd = rb_next(nd)) {
+			struct ptable_node *touch;
+			touch = rb_entry(nd, struct ptable_node, ptable_rb);
+			/* ignore small memory region */
+			if (touch->flags == BIG_MEM_REGION) {
+				index = ((unsigned long) touch - (unsigned long) &scm_head->data) / sizeof(struct ptable_node);
 				usage_map[index] = 1;
 			}
 		}
-		/* freelist */
-		for (i=0; i<scm_head->len; ++i) {
-			if (usage_map[i] == 0) {
-				tmp= (struct table_freelist *)kmalloc(sizeof(struct table_freelist), GFP_KERNEL);
-				tmp->node_addr = (char *)&scm_head->data + i*sizeof(struct ptable_node);
-				list_add_tail(&tmp->list, &table_freelist.list);
-			}
+	}
+	/* hptable */
+	if (!RB_EMPTY_ROOT(&scm_head->hptable_rb)) {
+		for (nd = rb_first(&scm_head->hptable_rb); nd; nd = rb_next(nd)) {
+			struct hptable_node *touch;
+			touch = rb_entry(nd, struct hptable_node, hptable_rb);
+			index = ((unsigned long) touch - (unsigned long) &scm_head->data) / sizeof(struct hptable_node);
+			usage_map[index] = 1;
+		}
+	}
+	/* freelist */
+	for (index = 0; index < scm_head->len; ++index) {
+		if (usage_map[index] == 0) {
+			tmp = (struct table_freelist *) kmalloc(sizeof(struct table_freelist), GFP_KERNEL);
+			tmp->node_addr = (char *) &scm_head->data + index * sizeof(struct ptable_node);
+			list_add_tail(&tmp->list, &table_freelist.list);
+			freecount++;
 		}
 	}
 	/* TODO test SCM is not new */
@@ -199,6 +211,8 @@ static void *get_freenode_addr(void)
 	}
 	entry = list_first_entry(&table_freelist.list, struct table_freelist, list);
 	ret = entry->node_addr;
+	list_del(&entry->list);
+	freecount--;
 	kfree(entry);
 	return ret;
 }
@@ -286,7 +300,7 @@ static struct ptable_node *search_ptable_node_rb(u64 _id, unsigned long flags)
 {
 	struct rb_node *n;
 	struct ptable_node *touch;
-	if (flags != 0 || flags != 1) {
+	if (flags != BIG_MEM_REGION && flags != SMALL_MEM_REGION) {
 		return NULL;
 	}
 	n = scm_head->ptable_rb.rb_node;
@@ -352,7 +366,8 @@ static void add_freenode_addr(void *addr)
 	struct table_freelist *tmp;
 	tmp= (struct table_freelist *)kmalloc(sizeof(struct table_freelist), GFP_KERNEL);
 	tmp->node_addr = addr;
-	list_add_tail(&tmp->list, &table_freelist.list);
+	list_add(&tmp->list, &table_freelist.list);
+	freecount++;
 }
 
 /* -1 error, 0 success */
@@ -379,7 +394,6 @@ static int delete_hptable_node_rb(u64 _id)
 	add_freenode_addr((void *)n);
 	return 0;
 }
-
 
 int delete_big_region_node(u64 _id)
 {

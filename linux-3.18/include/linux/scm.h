@@ -15,6 +15,7 @@
 
 /* 128M pfns 128*1024/4*/
 #define SCM_PFN_NUM 32768UL
+#define SCM_PTABLE_PFN_NUM 1024
 #define SCM_MAGIC 0x01234567
 
 /* flags in struct node */
