@@ -5,19 +5,16 @@
 #include <linux/rbtree.h>
 
 static struct scm_head *scm_head;
-static u64 freecount = 0; // count freelist
-static struct table_freelist table_freelist = {
-	.node_addr = NULL,
-	.list = LIST_HEAD_INIT(table_freelist.list),
-};
+static struct table_freelist *table_freelist;
 
 /* FOR DEBUG */
+static u64 freecount = 0; // count freelist
 static void scm_print_freelist(void)
 {
 	struct table_freelist *tmp;
 	int i=0;
 	daisy_printk("freelist %lu: ", freecount);
-	list_for_each_entry(tmp, &table_freelist.list, list) {
+	list_for_each_entry(tmp, &table_freelist->list, list) {
 		daisy_printk("%lu %lu\t", tmp->node_addr, ((unsigned long)tmp->node_addr-(unsigned long)&scm_head->data)/sizeof(struct ptable_node));
 		++i;
 		if (i>=10) break;
@@ -28,7 +25,7 @@ static void scm_print_freelist(void)
 static void scm_print_pnode(struct ptable_node *n)
 {
 	if (n) {
-		daisy_printk("%lu\n", n->_id);
+		daisy_printk("id: %lu, vaddr %lu\n", n->_id, n);
 	} else {
 		daisy_printk("NULL\n");
 	}
@@ -82,7 +79,7 @@ static void reserve_scm_ptable_memory(void)
 	memblock_reserve(phys, size);
 	scm_head = (struct scm_head*)__va(phys);
 
-	daisy_printk("scm_start_phys: %lu\n", phys);
+	daisy_printk("scm_start_phys: %lu scm_head vaddr %lu\n", phys, scm_head);
 	daisy_printk("Get start pfn: %lu， max_pfn: %lu\n", phys >> PAGE_SHIFT, max_pfn_mapped);
 	/* record the size */
 	/* TODO if scm has old data, total_size cannot change, do a realloc; now just check */
@@ -163,6 +160,8 @@ void scm_freelist_boot(void)
 	struct table_freelist *tmp;
 	unsigned long index;
 	struct rb_node *nd;
+	table_freelist = (struct table_freelist *) kmalloc(sizeof(struct table_freelist), GFP_KERNEL);
+	INIT_LIST_HEAD(&table_freelist->list);
 	char usage_map[scm_head->len];
 	for (index = 0; index < scm_head->len; ++index) {
 		usage_map[index] = 0;
@@ -193,12 +192,13 @@ void scm_freelist_boot(void)
 		if (usage_map[index] == 0) {
 			tmp = (struct table_freelist *) kmalloc(sizeof(struct table_freelist), GFP_KERNEL);
 			tmp->node_addr = (char *) &scm_head->data + index * sizeof(struct ptable_node);
-			list_add_tail(&tmp->list, &table_freelist.list);
+			list_add_tail(&tmp->list, &table_freelist->list);
 			freecount++;
 		}
 	}
 	/* TODO test SCM is not new */
 	scm_print_freelist();
+	scm_full_test();
 }
 
 /* pop an item from freelist, free the item, return the addr (NULL if no more) */
@@ -206,10 +206,10 @@ static void *get_freenode_addr(void)
 {
 	void *ret;
 	struct table_freelist *entry;
-	if (list_empty(&table_freelist.list)) {
+	if (list_empty(&table_freelist->list)) {
 		return NULL;
 	}
-	entry = list_first_entry(&table_freelist.list, struct table_freelist, list);
+	entry = list_first_entry(&table_freelist->list, struct table_freelist, list);
 	ret = entry->node_addr;
 	list_del(&entry->list);
 	freecount--;
@@ -366,7 +366,7 @@ static void add_freenode_addr(void *addr)
 	struct table_freelist *tmp;
 	tmp= (struct table_freelist *)kmalloc(sizeof(struct table_freelist), GFP_KERNEL);
 	tmp->node_addr = addr;
-	list_add(&tmp->list, &table_freelist.list);
+	list_add(&tmp->list, &table_freelist->list);
 	freecount++;
 }
 
