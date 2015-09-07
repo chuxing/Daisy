@@ -13,8 +13,8 @@
  * data
 */
 
-/* 128M pfns 128*1024/4*/
-#define SCM_PFN_NUM 32768UL
+/* 1024M=1G pfns 1024*1024/4*/
+#define SCM_PFN_NUM 262144UL
 #define SCM_PTABLE_PFN_NUM 1024
 #define SCM_MAGIC 0x01234567
 

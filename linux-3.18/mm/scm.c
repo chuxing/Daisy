@@ -47,6 +47,8 @@ static void scm_fake_initdata(void)
 void scm_full_test(void)
 {
 	struct ptable_node *n;
+	struct page *page;
+
 	insert_big_region_node(345, 0, 0);
 	scm_print_freelist();
 	insert_small_region_node(344, 0, 0, 557);
@@ -64,6 +66,12 @@ void scm_full_test(void)
 	delete_small_region_node(344);
 	delete_big_region_node(345);
 	scm_print_freelist();
+	page = alloc_pages(GFP_KERNEL | GFP_SCM, 0);
+	daisy_printk("alloc_pages: %s %lu %lu %lu\n", page_zone(page)->name, page_to_pfn(page), PFN_PHYS(page_to_pfn(page)), page_address(page));
+	page = alloc_pages(GFP_KERNEL | GFP_DMA, 0);
+	daisy_printk("alloc_pages: %s %lu %lu %lu\n", page_zone(page)->name, page_to_pfn(page), PFN_PHYS(page_to_pfn(page)), page_address(page));
+	page = alloc_pages(GFP_KERNEL, 0);
+	daisy_printk("alloc_pages: %s %lu %lu %lu\n", page_zone(page)->name, page_to_pfn(page), PFN_PHYS(page_to_pfn(page)), page_address(page));
 }
 /* end FOR DEBUG */
 
