@@ -168,9 +168,11 @@ void scm_freelist_boot(void)
 	struct table_freelist *tmp;
 	unsigned long index;
 	struct rb_node *nd;
+	char usage_map[scm_head->len];
+
 	table_freelist = (struct table_freelist *) kmalloc(sizeof(struct table_freelist), GFP_KERNEL);
 	INIT_LIST_HEAD(&table_freelist->list);
-	char usage_map[scm_head->len];
+
 	for (index = 0; index < scm_head->len; ++index) {
 		usage_map[index] = 0;
 	}
