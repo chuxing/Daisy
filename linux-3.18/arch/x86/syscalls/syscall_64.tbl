@@ -328,7 +328,9 @@
 319	common	memfd_create		sys_memfd_create
 320	common	kexec_file_load		sys_kexec_file_load
 321	common	bpf			sys_bpf
-322 64 p_mmap sys_p_mmap
+322 64 		p_mmap 		sys_p_mmap
+323 64 		p_search_big_region_node		sys_p_search_big_region_node
+324	64		p_alloc_and_insert				sys_p_alloc_and_insert
 
 #
 # x32-specific system call numbers start at 512 to avoid cache impact
