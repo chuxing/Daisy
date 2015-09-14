@@ -78,6 +78,7 @@
 #include <linux/context_tracking.h>
 #include <linux/random.h>
 #include <linux/list.h>
+#include <linux/scm.h>
 
 #include <asm/io.h>
 #include <asm/bugs.h>
@@ -490,7 +491,9 @@ static void __init mm_init(void)
 	 * bigger than MAX_ORDER unless SPARSEMEM.
 	 */
 	page_cgroup_init_flatmem();
+	/* In mem_init, memblock die */
 	mem_init();
+	/* In kmem_cache_init, kmalloc born */
 	kmem_cache_init();
 	percpu_init_late();
 	pgtable_init();
@@ -529,6 +532,9 @@ asmlinkage __visible void __init start_kernel(void)
 	page_address_init();
 	pr_notice("%s", linux_banner);
 	setup_arch(&command_line);
+
+	scm_ptable_boot();
+
 	mm_init_cpumask(&init_mm);
 	setup_command_line(command_line);
 	setup_nr_cpu_ids();
@@ -559,7 +565,12 @@ asmlinkage __visible void __init start_kernel(void)
 	vfs_caches_init_early();
 	sort_main_extable();
 	trap_init();
+
 	mm_init();
+
+	/* After mm_init we can use kmalloc and we can never use memblock*/
+	print_all_pgdat();
+	scm_freelist_boot();
 
 	/*
 	 * Set up the scheduler prior starting any interrupts (such as the

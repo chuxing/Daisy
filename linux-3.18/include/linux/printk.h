@@ -141,6 +141,11 @@ int printk_emit(int facility, int level,
 asmlinkage __printf(1, 2) __cold
 int printk(const char *fmt, ...);
 
+#ifdef CONFIG_SCM
+asmlinkage __printf(1, 2) __cold
+int daisy_printk(const char *fmt, ...);
+#endif
+
 /*
  * Special printk facility for scheduler/timekeeping use only, _DO_NOT_USE_ !
  */

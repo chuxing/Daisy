@@ -615,7 +615,7 @@ kernel_physical_mapping_init(unsigned long start,
 	bool pgd_changed = false;
 	unsigned long next, last_map_addr = end;
 	unsigned long addr;
-
+	daisy_printk("%s %s\n", __FILE__, __func__);
 	start = (unsigned long)__va(start);
 	end = (unsigned long)__va(end);
 	addr = start;
@@ -660,6 +660,8 @@ void __init initmem_init(void)
 
 void __init paging_init(void)
 {
+	daisy_printk("%s %s\n", __FILE__, __func__);
+
 	sparse_memory_present_with_active_regions(MAX_NUMNODES);
 	sparse_init();
 
@@ -1057,6 +1059,7 @@ static void __init register_page_bootmem_info(void)
 
 void __init mem_init(void)
 {
+	daisy_printk("%s %s\n", __FILE__, __func__);
 	pci_iommu_alloc();
 
 	/* clear_bss() already clear the empty_zero_page */
