@@ -13,6 +13,9 @@
 #include <linux/unistd.h>
 
 #define __NR_p_mmap 322
+#define __NR_p_search_big_region_node 323
+#define __NR_p_alloc_and_insert 324
+
 #define SHM_SIZE    (1024*9)
 
 struct tagMemoryBlock {

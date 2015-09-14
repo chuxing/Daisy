@@ -2,8 +2,11 @@
 #include "p_mmap.h"
 
 int main(int argc, char **argv) {
+    printf("in the main\n");
     int iRet = 0;
+    char *ptr;
 
+    /*
     iRet = p_init();
     if (iRet < 0) {
         printf("error: p_init\n");
@@ -18,9 +21,9 @@ int main(int argc, char **argv) {
         }
     }
     
-    char *ptr;
     ptr = (char *)p_malloc(1);
     printf("return from p_malloc 1, addr=%p\n", ptr);
+    */
     
     /*
     p_free(ptr, 1);

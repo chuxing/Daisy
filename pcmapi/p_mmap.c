@@ -4,7 +4,15 @@ static char *pAddr = NULL;
 static const int iBitsCount = (SHM_SIZE) / 9 * 8;
 
 static void* p_mmap(void* addr,unsigned long len,unsigned long prot,unsigned long id) {
-	return (void*)syscall(__NR_p_mmap, addr, len,prot,id);
+	return (void*)syscall(__NR_p_mmap, addr, len, prot, id);
+}
+
+static int p_search_big_region_node(unsigned long id) {
+	return (int)syscall(__NR_p_search_big_region_node, id);
+}
+
+static int p_alloc_and_insert(unsigned long id, int size) {
+    return (int)syscall(__NR_p_alloc_and_insert, id, size);
 }
 
 int p_init() {
@@ -14,11 +22,10 @@ int p_init() {
     int iRet = 0;
 
     /* make the key: */
-    if ((key = ftok("/tmp", 'R')) == -1) {
+    if ((key = ftok("/bin", 'R')) == -1) {
         perror("ftok");
         exit(1);
     }
-    1;
 
     /* connect to (and possibly create) the segment: */
     if ((shmid = shmget(key, SHM_SIZE, 0777 | IPC_CREAT)) == -1) {
@@ -142,17 +149,35 @@ int p_free(void *addr, int size) {
     return 0;
 }
 
-void *p_new(int pId, int size) {
-    /*
-    * p_mmap causes page fault immediately, so PA is available when p_tab_insert is called.
-    */
+void *p_new(int pId, int iSize) {
+    int iRet = 0;
 
-    void *pAddr = p_mmap(NULL, 4096, PROT_READ | PROT_WRITE, 2);
+    iRet = p_search_big_region_node(111);
+    printf("return from p_search_big_region_node: %d\n", iRet);
+
+    iRet = p_alloc_and_insert(1,1);
+    printf("return from p_alloc_and_insert: %d\n", iRet);
+
+    return NULL;
     /*
-    p_tab_insert(pAddr, pId);
-    */
+    if (p_search_big_region_node(pId)) {
+        printf("id: %d already exists in big region\n", pId);
+        return NULL;
+    }
+
+    iRet = p_alloc_and_insert(pId, iSize);
+    if (iRet < 0) {
+        printf("p_alloc_and_insert failed\n");
+        return NULL;
+    }
+
+    void *pAddr = p_mmap(NULL, iSize, PROT_READ | PROT_WRITE, pId);
+    if (!pAddr) {
+        printf("p_mmap return NULL\n");
+    }
 
     return pAddr;
+    */
 }
 
 int p_delete(int pId) {
