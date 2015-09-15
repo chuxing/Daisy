@@ -150,27 +150,33 @@ int p_free(void *addr, int size) {
 }
 
 void *p_new(int pId, int iSize) {
+    /*
+    if (iSize < 4096) {
+        return NULL;
+    }
+    */
+
     int iRet = 0;
 
-    iRet = p_search_big_region_node(111);
+    iRet = p_search_big_region_node(pId);
     printf("return from p_search_big_region_node: %d\n", iRet);
-
-    iRet = p_alloc_and_insert(1,1);
-    printf("return from p_alloc_and_insert: %d\n", iRet);
-
-    return NULL;
-    /*
-    if (p_search_big_region_node(pId)) {
-        printf("id: %d already exists in big region\n", pId);
+    if (iRet) {
+        printf("id %d already exist\n", pId);
         return NULL;
     }
 
     iRet = p_alloc_and_insert(pId, iSize);
-    if (iRet < 0) {
-        printf("p_alloc_and_insert failed\n");
+    printf("return from p_alloc_and_insert: %d\n", (int)iRet);
+    if (iRet != 0) {
+        printf("error: p_alloc_and_insert\n");
         return NULL;
     }
 
+    iRet = p_search_big_region_node(pId);
+    printf("return from p_search_big_region_node: %d\n", iRet);
+
+    return NULL;
+    /*
     void *pAddr = p_mmap(NULL, iSize, PROT_READ | PROT_WRITE, pId);
     if (!pAddr) {
         printf("p_mmap return NULL\n");

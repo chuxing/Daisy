@@ -3,6 +3,7 @@
 #include <linux/slab.h>
 #include <linux/list.h>
 #include <linux/rbtree.h>
+#include <linux/syscalls.h>
 
 static struct scm_head *scm_head;
 static struct table_freelist *table_freelist;
@@ -168,7 +169,7 @@ void scm_freelist_boot(void)
 	struct table_freelist *tmp;
 	unsigned long index;
 	struct rb_node *nd;
-	char usage_map[scm_head->len];
+	char *usage_map = (char *)kmalloc(scm_head->len, GFP_KERNEL);
 
 	table_freelist = (struct table_freelist *) kmalloc(sizeof(struct table_freelist), GFP_KERNEL);
 	INIT_LIST_HEAD(&table_freelist->list);
@@ -209,6 +210,7 @@ void scm_freelist_boot(void)
 	/* TODO test SCM is not new */
 	scm_print_freelist();
 	scm_full_test();
+	kfree(usage_map);
 }
 
 /* pop an item from freelist, free the item, return the addr (NULL if no more) */
@@ -418,4 +420,34 @@ int delete_small_region_node(u64 _id)
 int delete_heap_region_node(u64 _id)
 {
 	return delete_hptable_node_rb(_id);
+}
+
+SYSCALL_DEFINE1(p_search_big_region_node, unsigned long, id) {
+	struct ptable_node *node = search_big_region_node(id);
+	return (node != NULL);
+}
+
+SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, int, size) {
+	int iRet = 0;
+	struct page *page;
+
+	page = alloc_pages(GFP_KERNEL | GFP_SCM, 0);
+	if (page == NULL) {
+		daisy_printk("error: alloc_pages\n");
+		return -1;
+	}
+
+	void *pAddr = page_address(page);
+	if (pAddr == NULL) {
+		daisy_printk("error: page_address");
+		return -1;
+	}
+
+	iRet = insert_big_region_node(id, (u64)pAddr, size);
+	if (iRet != 0) {
+		daisy_printk("error: insert_big_region_node\n");
+		return -1;
+	}
+
+	return iRet;
 }
