@@ -3384,7 +3384,6 @@ static int build_zonelists_node(pg_data_t *pgdat, struct zonelist *zonelist,
 	return nr_zones;
 }
 
-
 /*
  *  zonelist_order:
  *  0 = automatic detection of better ordering.
