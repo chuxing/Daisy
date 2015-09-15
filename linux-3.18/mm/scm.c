@@ -168,7 +168,7 @@ void scm_freelist_boot(void)
 	struct table_freelist *tmp;
 	unsigned long index;
 	struct rb_node *nd;
-	char usage_map[scm_head->len];
+	char *usage_map = (char *)kmalloc(scm_head->len, GFP_KERNEL);
 
 	table_freelist = (struct table_freelist *) kmalloc(sizeof(struct table_freelist), GFP_KERNEL);
 	INIT_LIST_HEAD(&table_freelist->list);
@@ -206,6 +206,7 @@ void scm_freelist_boot(void)
 			freecount++;
 		}
 	}
+	kfree(usage_map);
 	/* TODO test SCM is not new */
 	scm_print_freelist();
 	scm_full_test();
