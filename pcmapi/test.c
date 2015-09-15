@@ -4,7 +4,7 @@
 int main(int argc, char **argv) {
     printf("in the main\n");
     int iRet = 0;
-    char *ptr;
+    char *ptr = NULL;
 
     /*
     iRet = p_init();

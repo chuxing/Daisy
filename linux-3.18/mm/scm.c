@@ -419,11 +419,3 @@ int delete_heap_region_node(u64 _id)
 {
 	return delete_hptable_node_rb(_id);
 }
-
-SYSCALL_DEFINE1(p_search_big_region_node, unsigned long, id) {
-	return 123;
-}
-
-SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, int, size) {
-	return 234;
-}

@@ -3432,6 +3432,14 @@ SYSCALL_DEFINE4(p_mmap, unsigned long, addr, unsigned long, len,
 	return retval;
 }
 
+SYSCALL_DEFINE1(p_search_big_region_node, unsigned long, id) {
+	return (void *)123;
+}
+
+SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, int, size) {
+	return (void *)234;
+}
+
 static struct notifier_block reserve_mem_nb = {
 	.notifier_call = reserve_mem_notifier,
 };
