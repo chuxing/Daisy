@@ -332,6 +332,7 @@
 323 64 		p_search_big_region_node		sys_p_search_big_region_node
 324	64		p_alloc_and_insert				sys_p_alloc_and_insert
 
+
 #
 # x32-specific system call numbers start at 512 to avoid cache impact
 # for native 64-bit operation.
