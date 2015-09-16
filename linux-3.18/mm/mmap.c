@@ -3430,6 +3430,7 @@ SYSCALL_DEFINE4(p_mmap, unsigned long, addr, unsigned long, len,
 	mm_populate(retval, populate);
 
 	return retval;
+}
 
 static struct notifier_block reserve_mem_nb = {
 	.notifier_call = reserve_mem_notifier,
