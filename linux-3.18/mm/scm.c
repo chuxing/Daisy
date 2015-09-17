@@ -437,10 +437,12 @@ SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, int, size) {
 		return -1;
 	}
 
-	void *pAddr = page_address(page);
+	void *pAddr = (page_to_pfn(page) << PAGE_SHIFT);
 	if (pAddr == NULL) {
 		daisy_printk("error: page_address");
 		return -1;
+	} else {
+		daisy_printk("page's phys addr = %p\n", pAddr);
 	}
 
 	iRet = insert_big_region_node(id, (u64)pAddr, size);

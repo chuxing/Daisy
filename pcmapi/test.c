@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     printf("return from p_malloc 100, addr=%p\n", ptr);
     */
     
-    ptr = p_new(1,1);
+    ptr = p_new(1,4096);
     printf("return from p_new, addr=%p\n", ptr);
     return 0;
 }

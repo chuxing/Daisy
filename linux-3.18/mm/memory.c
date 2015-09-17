@@ -61,6 +61,7 @@
 #include <linux/string.h>
 #include <linux/dma-debug.h>
 #include <linux/debugfs.h>
+#include <linux/scm.h>
 
 #include <asm/io.h>
 #include <asm/pgalloc.h>
@@ -2903,7 +2904,19 @@ static int do_read_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 
 	if(vma->vm_flags & VM_PCM)
 	{
-		printk("============read pg=%lx\n",pg);
+		daisy_printk("===== scm_id in vma = %d\n", vma->scm_id);
+		struct ptable_node *p_node = search_big_region_node(vma->scm_id);
+		if (!p_node) p_node = search_small_region_node(vma->scm_id);
+
+		if (!p_node) {
+			daisy_printk("===== fatal error: p_node is null");
+			return -1;
+		}
+
+		fault_page = (pfn_to_page(p_node->phys_addr >> PAGE_SHIFT));
+		daisy_printk("allocated page: pfn %p\n", PFN_PHYS(page_to_pfn(fault_page)));
+
+		/*
 		if(pg)
 		{
 			fault_page=pg;
@@ -2916,6 +2929,7 @@ static int do_read_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 			printk("============count=%lx,mapcount=%lx\n",pg->_count,pg->_mapcount);
 			fault_page=pg;//32M
 		}
+		*/
 		ret=0;
 	}
 	else

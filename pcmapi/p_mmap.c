@@ -162,28 +162,27 @@ void *p_new(int pId, int iSize) {
     printf("return from p_search_big_region_node: %d\n", iRet);
     if (iRet) {
         printf("id %d already exist\n", pId);
-        return NULL;
+        //return NULL;
     }
 
     iRet = p_alloc_and_insert(pId, iSize);
     printf("return from p_alloc_and_insert: %d\n", (int)iRet);
     if (iRet != 0) {
         printf("error: p_alloc_and_insert\n");
-        return NULL;
+        //return NULL;
     }
 
-    iRet = p_search_big_region_node(pId);
-    printf("return from p_search_big_region_node: %d\n", iRet);
-
-    return NULL;
-    /*
     void *pAddr = p_mmap(NULL, iSize, PROT_READ | PROT_WRITE, pId);
     if (!pAddr) {
         printf("p_mmap return NULL\n");
+    } else {
+        int *pInt = (int *)pAddr;
+        printf("return address from p_mmap = %p\n", pAddr);
+        printf("value = %d, ready to write %d\n", *pInt, *pInt+1);
+        *pInt += 1;
     }
 
     return pAddr;
-    */
 }
 
 int p_delete(int pId) {
