@@ -2,7 +2,6 @@
 #include "p_mmap.h"
 
 int main(int argc, char **argv) {
-    printf("in the main\n");
     int iRet = 0;
     char *ptr = NULL;
 
@@ -48,7 +47,20 @@ int main(int argc, char **argv) {
     printf("return from p_malloc 100, addr=%p\n", ptr);
     */
     
-    ptr = p_new(1,4096);
-    printf("return from p_new, addr=%p\n", ptr);
+    printf("ready to call p_get\n");
+    ptr = p_get(23, 4096);
+    if (!ptr) {
+        printf("ready to call p_new\n");
+        ptr = p_new(23, 4096);
+        if (!ptr) {
+            printf("p_new failed\n");
+            return -1;
+        }
+    }
+
+    
+    int *tmp = (int *)ptr;
+    printf("=== ptr = %p, value = %d, ready to add 1\n", ptr,*tmp);
+    *tmp += 1;
     return 0;
 }

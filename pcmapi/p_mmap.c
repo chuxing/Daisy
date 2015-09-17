@@ -175,11 +175,6 @@ void *p_new(int pId, int iSize) {
     void *pAddr = p_mmap(NULL, iSize, PROT_READ | PROT_WRITE, pId);
     if (!pAddr) {
         printf("p_mmap return NULL\n");
-    } else {
-        int *pInt = (int *)pAddr;
-        printf("return address from p_mmap = %p\n", pAddr);
-        printf("value = %d, ready to write %d\n", *pInt, *pInt+1);
-        *pInt += 1;
     }
 
     return pAddr;
@@ -194,9 +189,19 @@ int p_delete(int pId) {
     return 0;
 }
 
-void *p_get(int pId, int *pSize) {
-    /*
-    void *pAddr = sys_p_find_addr(pId, pSize);
+void *p_get(int pId, int iSize) {
+    int iRet = 0;
+    
+    iRet = p_search_big_region_node(pId);
+    if (!iRet) {
+        printf("cannot find %d in big region\n", pId);
+        return NULL;
+    }
+
+    void *pAddr = p_mmap(NULL, iSize, PROT_READ | PROT_WRITE, pId);
+    if (!pAddr) {
+        printf("p_mmap return NULL\n");
+    }
+
     return pAddr;
-    */
 }

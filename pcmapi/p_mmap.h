@@ -47,7 +47,7 @@ void *p_new(int pId, int size);
 
 int p_delete(int pId);
 
-void *p_get(int pId, int *pSize);
+void *p_get(int pId, int iSize);
 
 /*** helper functions ***/
 

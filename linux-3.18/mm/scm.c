@@ -448,7 +448,6 @@ SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, int, size) {
 	iRet = insert_big_region_node(id, (u64)pAddr, size);
 	if (iRet != 0) {
 		daisy_printk("error: insert_big_region_node\n");
-		return -1;
 	}
 
 	return iRet;
