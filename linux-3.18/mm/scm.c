@@ -431,6 +431,12 @@ SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, int, size) {
 	int iRet = 0;
 	struct page *page;
 
+	if (size <= 0) {
+		daisy_printk("error: size <= 0");
+		return -1;
+	}
+
+	//TODO: calculate order using size
 	page = alloc_pages(GFP_KERNEL | GFP_SCM, 0);
 	if (page == NULL) {
 		daisy_printk("error: alloc_pages\n");
@@ -448,6 +454,40 @@ SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, int, size) {
 	iRet = insert_big_region_node(id, (u64)pAddr, size);
 	if (iRet != 0) {
 		daisy_printk("error: insert_big_region_node\n");
+	}
+
+	return iRet;
+}
+
+SYSCALL_DEFINE1(p_get_small_region, unsigned long, id) {
+	// get id from inode
+	struct hptable_node *pHpNode = search_heap_region_node(id);
+	if (pHpNode != NULL) {
+		daisy_printk("find heap region per program\n");
+		return 0;
+	} else {
+		daisy_printk("can not find heap region per program\n");
+	}
+
+	int iRet = 0;
+	struct page *page = alloc_pages(GFP_KERNEL | GFP_SCM, 0);
+	if (page == NULL) {
+		daisy_printk("error: alloc_pages\n");
+		return -1;
+	}
+
+	void *pAddr = (page_to_pfn(page) << PAGE_SHIFT);
+	if (pAddr == NULL) {
+		daisy_printk("error: page_address");
+		return -1;
+	} else {
+		daisy_printk("page's phys addr = %p\n", pAddr);
+	}
+
+	iRet = insert_heap_region_node(id, (u64)pAddr, 4096);
+	if (iRet != 0) {
+		daisy_printk("error: insert_big_region_node\n");
+		return -1;
 	}
 
 	return iRet;

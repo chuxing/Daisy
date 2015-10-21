@@ -2907,6 +2907,7 @@ static int do_read_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		daisy_printk("===== scm_id in vma = %d\n", vma->scm_id);
 		struct ptable_node *p_node = search_big_region_node(vma->scm_id);
 		if (!p_node) p_node = search_small_region_node(vma->scm_id);
+		if (!p_node) p_node = search_heap_region_node(vma->scm_id);
 
 		if (!p_node) {
 			daisy_printk("===== fatal error: p_node is null");
@@ -2916,20 +2917,6 @@ static int do_read_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		fault_page = (pfn_to_page(p_node->phys_addr >> PAGE_SHIFT));
 		daisy_printk("allocated page: pfn %p\n", PFN_PHYS(page_to_pfn(fault_page)));
 
-		/*
-		if(pg)
-		{
-			fault_page=pg;
-			printk("============count=%lx,mapcount=%lx\n",pg->_count,pg->_mapcount);
-		}
-		else
-		{
-			pg=alloc_page(__GFP_MOVABLE);
-			printk("============alloc pfn=%lx\n",page_to_pfn(pg));
-			printk("============count=%lx,mapcount=%lx\n",pg->_count,pg->_mapcount);
-			fault_page=pg;//32M
-		}
-		*/
 		ret=0;
 	}
 	else

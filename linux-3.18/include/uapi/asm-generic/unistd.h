@@ -715,11 +715,13 @@ __SYSCALL(__NR_p_mmap, sys_p_mmap)
 __SYSCALL(__NR_p_search_big_region_node, sys_p_search_big_region_node)
 #define __NR_p_alloc_and_insert 324
 __SYSCALL(__NR_p_alloc_and_insert, sys_p_alloc_and_insert)
+#define __NT_p_get_small_region 325
+__SYSCALL(__NR_p_get_small_region, sys_p_get_small_region)
 
 /*PCM system call definitions end here*/
 
 #undef __NR_syscalls
-#define __NR_syscalls 284
+#define __NR_syscalls 285
 
 
 /*
