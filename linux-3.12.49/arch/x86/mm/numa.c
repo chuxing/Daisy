@@ -620,6 +620,7 @@ static int __init dummy_numa_init(void)
  */
 void __init x86_numa_init(void)
 {
+	daisy_printk("%s %s\n", __FILE__, __func__);
 	if (!numa_off) {
 #ifdef CONFIG_X86_NUMAQ
 		if (!numa_init(numaq_numa_init))

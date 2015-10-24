@@ -74,7 +74,6 @@ int console_printk[4] = {
  */
 int oops_in_progress;
 EXPORT_SYMBOL(oops_in_progress);
-
 /*
  * console_sem protects the console_drivers list, and also
  * provides serialisation for access to the entire console
@@ -1689,6 +1688,22 @@ asmlinkage int printk(const char *fmt, ...)
 	return r;
 }
 EXPORT_SYMBOL(printk);
+ 
+#ifdef CONFIG_SCM
+asmlinkage __visible int daisy_printk(const char *fmt, ...) {
+	va_list args;
+	int r;
+	char buf[128] = "[Daisy] ";
+	va_start(args, fmt);
+	vsnprintf(buf+8, sizeof(buf)-8, fmt, args);
+#ifdef CONFIG_SCM_DEBUG
+	r = printk(buf);
+#endif
+	va_end(args);
+	return r;
+}
+EXPORT_SYMBOL(daisy_printk);
+#endif
 
 #else /* CONFIG_PRINTK */
 
