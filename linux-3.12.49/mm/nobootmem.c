@@ -167,11 +167,12 @@ unsigned long __init free_all_bootmem(void)
 {
 	unsigned long pages;
 
+	daisy_printk("%s %s\n", __FILE__, __func__);
 	reset_all_zones_managed_pages();
 
 	/*
 	 * We need to use MAX_NUMNODES instead of NODE_DATA(0)->node_id
-	 *  because in some case like Node0 doesn't have RAM installed
+	 *  because in some case like Node0 doesn't have RAM pinstalled
 	 *  low ram will be on Node1
 	 */
 	pages = free_low_memory_core_early();
