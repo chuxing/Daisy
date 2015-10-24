@@ -144,6 +144,7 @@ index 66dba36..9043375 100644
  	probe_page_size_mask();
  
  #ifdef CONFIG_X86_64
+<???TODO
 @@ -547,6 +552,7 @@ void __init init_mem_mapping(void)
  	 */
  	if (memblock_bottom_up()) {
@@ -159,7 +160,7 @@ index 66dba36..9043375 100644
 +		daisy_printk("NOT memblock_bottom_up\n");
  		memory_map_top_down(ISA_END_ADDRESS, end);
  	}
- 
+???TODO>
 @@ -670,7 +677,10 @@ void __init free_initrd_mem(unsigned long start, unsigned long end)
  void __init zone_sizes_init(void)
  {
@@ -362,6 +363,7 @@ diff --git a/linux-3.18/include/linux/mm_types.h b/linux-3.18/include/linux/mm_t
 index 6e0b286..f7c6c54 100644
 --- a/linux-3.18/include/linux/mm_types.h
 +++ b/linux-3.18/include/linux/mm_types.h
+<???TODO
 @@ -308,6 +308,8 @@ struct vm_area_struct {
  #ifdef CONFIG_NUMA
  	struct mempolicy *vm_policy;	/* NUMA policy for the VMA */
@@ -369,7 +371,7 @@ index 6e0b286..f7c6c54 100644
 +
 +	unsigned long scm_id;
  };
- 
+ ???TODO>
  struct core_thread {
 diff --git a/linux-3.18/include/linux/mmzone.h b/linux-3.18/include/linux/mmzone.h
 index ffe66e3..815ef11 100644
@@ -526,6 +528,7 @@ diff --git a/linux-3.18/include/uapi/asm-generic/unistd.h b/linux-3.18/include/u
 index 22749c1..54567a0 100644
 --- a/linux-3.18/include/uapi/asm-generic/unistd.h
 +++ b/linux-3.18/include/uapi/asm-generic/unistd.h
+<???TODO
 @@ -708,8 +708,19 @@ __SYSCALL(__NR_memfd_create, sys_memfd_create)
  #define __NR_bpf 280
  __SYSCALL(__NR_bpf, sys_bpf)
@@ -544,7 +547,7 @@ index 22749c1..54567a0 100644
 -#define __NR_syscalls 281
 +#define __NR_syscalls 284
 +
- 
+???TODO>
  /*
   * All syscalls below here should go away really,
 diff --git a/linux-3.18/init/main.c b/linux-3.18/init/main.c
@@ -565,7 +568,7 @@ index 321d0ce..25bde23 100644
  	page_cgroup_init_flatmem();
 +	/* In mem_init, memblock die */
  	mem_init();
-+	/* In kmem_cache_init, kmalloc born */
++	/* In mem_init, memblock die */
  	kmem_cache_init();
  	percpu_init_late();
  	pgtable_init();
@@ -645,6 +648,7 @@ index d5f2ae9..e9b3c8f 100644
  
  #include <asm/io.h>
  #include <asm/pgalloc.h>
+ <???TODO
 @@ -2877,7 +2878,7 @@ static void do_fault_around(struct vm_area_struct *vma, unsigned long address,
  	vmf.flags = flags;
  	vma->vm_ops->map_pages(vma, &vmf);
@@ -695,6 +699,7 @@ index d5f2ae9..e9b3c8f 100644
 +	}
  	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE | VM_FAULT_RETRY)))
  		return ret;
+ ???TODO>
  
 @@ -3362,7 +3396,8 @@ int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
  	 */
