@@ -96,6 +96,7 @@ extern void fork_init(unsigned long);
 extern void mca_init(void);
 extern void sbus_init(void);
 extern void radix_tree_init(void);
+extern void print_all_pgdat(void);
 #ifndef CONFIG_DEBUG_RODATA
 static inline void mark_rodata_ro(void) { }
 #endif
@@ -473,6 +474,8 @@ static void __init mm_init(void)
 	pgtable_cache_init();
 	vmalloc_init();
 }
+
+
 
 asmlinkage void __init start_kernel(void)
 {

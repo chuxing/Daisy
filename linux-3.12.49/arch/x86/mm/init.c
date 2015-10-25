@@ -588,7 +588,7 @@ void __init zone_sizes_init(void)
 #ifdef CONFIG_ZONE_DMA32
 	max_zone_pfns[ZONE_DMA32]	= MAX_DMA32_PFN;
 #endif
-+	max_zone_pfns[ZONE_NORMAL]	= max(max_low_pfn-SCM_PFN_NUM, MAX_DMA32_PFN);
+	max_zone_pfns[ZONE_NORMAL]	= max(max_low_pfn-SCM_PFN_NUM, MAX_DMA32_PFN);
 #ifdef CONFIG_HIGHMEM
 	max_zone_pfns[ZONE_HIGHMEM]	= max_pfn;
 #endif

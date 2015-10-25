@@ -76,11 +76,11 @@ void scm_full_test(void)
 }
 /* end FOR DEBUG */
 
-static void reserve_scm_ptable_memory(void)
+static void  reserve_scm_ptable_memory(void)
 {
 	unsigned long size;
 	phys_addr_t phys;
-
+	struct scm_head hd;
 	/* get the first 1024 scm pages */
 	size = SCM_PTABLE_PFN_NUM * PAGE_SIZE;
 	/* pages in ZONE_SCM */
@@ -88,13 +88,14 @@ static void reserve_scm_ptable_memory(void)
 	memblock_reserve(phys, size);
 	scm_head = (struct scm_head*)__va(phys);
 
-	daisy_printk("scm_start_phys: %lu scm_head vaddr %lu\n", phys, scm_head);
-	daisy_printk("Get start pfn: %lu， max_pfn: %lu\n", phys >> PAGE_SHIFT, max_pfn_mapped);
+	early_printk("scm_start_phys: %lu scm_head vaddr %lu\n", phys, scm_head);
+	early_printk("Get start pfn: %lu， max_pfn: %lu\n", phys >> PAGE_SHIFT, max_pfn_mapped);
 	/* record the size */
 	/* TODO if scm has old data, total_size cannot change, do a realloc; now just check */
 	if (scm_head->magic == SCM_MAGIC && scm_head->total_size !=size) {
 		daisy_printk("TODO we need a warning or realloc here.\n");
 	}
+
 	scm_head->total_size = size;
 }
 
@@ -109,7 +110,7 @@ static void scm_ptable_init(void)
 	/* do i need a whole memset (set to 0)? */
 }
 
-static void scm_reserve_used_memory(void) {
+static void __meminit  scm_reserve_used_memory(void) {
 	struct rb_node *nd;
 	/* ptable */
 	if (!RB_EMPTY_ROOT(&scm_head->ptable_rb)) {
@@ -136,7 +137,7 @@ static void scm_reserve_used_memory(void) {
  * scm persist table boot step
  * reference to: numa_alloc_distance & numa_reset_distance
  */
-void scm_ptable_boot(void)
+void  scm_ptable_boot(void)
 {
 	reserve_scm_ptable_memory();
 
@@ -164,7 +165,7 @@ void scm_ptable_boot(void)
  * Just traverse the tree to init the freelist in DRAM
  * memblock reserve at the same time
  */
-void scm_freelist_boot(void)
+void __meminit scm_freelist_boot(void)
 {
 	struct table_freelist *tmp;
 	unsigned long index;
@@ -209,7 +210,7 @@ void scm_freelist_boot(void)
 	}
 	/* TODO test SCM is not new */
 	scm_print_freelist();
-	scm_full_test();
+//	scm_full_test();
 	kfree(usage_map);
 }
 
@@ -430,7 +431,7 @@ SYSCALL_DEFINE1(p_search_big_region_node, unsigned long, id) {
 SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, int, size) {
 	int iRet = 0;
 	struct page *page;
-
+	daisy_printk("alloc and insert: id=%d sz=%d\n",id,size);
 	if (size <= 0) {
 		daisy_printk("error: size <= 0");
 		return -1;

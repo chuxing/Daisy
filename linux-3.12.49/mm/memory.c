@@ -3304,12 +3304,12 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	int ret;
 	int page_mkwrite = 0;
 
+
 	/*
 	 * If we do COW later, allocate page befor taking lock_page()
 	 * on the file cache page. This will reduce lock holding time.
 	 */
 	if ((flags & FAULT_FLAG_WRITE) && !(vma->vm_flags & VM_SHARED)) {
-
 		if (unlikely(anon_vma_prepare(vma)))
 			return VM_FAULT_OOM;
 
@@ -3329,7 +3329,26 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	vmf.flags = flags;
 	vmf.page = NULL;
 
-	ret = vma->vm_ops->fault(vma, &vmf);
+	if (vma->vm_flags & VM_PCM) {
+		daisy_printk("===== scm_id in vma = %d\n", vma->scm_id);
+		struct ptable_node *p_node = search_big_region_node(vma->scm_id);
+		if (!p_node)
+			p_node = search_small_region_node(vma->scm_id);
+
+		if (!p_node) {
+			daisy_printk("===== fatal error: p_node is null");
+			return -1;
+		}
+
+		vmf.page = (pfn_to_page(p_node->phys_addr >> PAGE_SHIFT));
+		daisy_printk("allocated page: pfn %p\n",
+				PFN_PHYS(page_to_pfn(vmf.page)));
+		ret=0;
+	}
+	else
+	{
+		ret = vma->vm_ops->fault(vma, &vmf);
+	}
 	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE |
 			    VM_FAULT_RETRY)))
 		goto uncharge_out;
