@@ -1,6 +1,6 @@
 #include "p_mmap.h"
 
-static char *pAddr = NULL;
+static char *pBaseAddr = NULL;
 static const int iBitsCount = (SHM_SIZE) / 9 * 8;
 
 static void* p_mmap(void* addr,unsigned long len,unsigned long prot,unsigned long id) {
@@ -15,25 +15,28 @@ static int p_alloc_and_insert(unsigned long id, int size) {
     return (int)syscall(__NR_p_alloc_and_insert, id, size);
 }
 
+static int p_get_small_region(unsigned long id) {
+	return (int)syscall(__NR_p_get_small_region, id);
+}
+
+#define HPID    234567
+/*
 int p_init() {
     key_t key;
     int shmid;
     int mode;
     int iRet = 0;
 
-    /* make the key: */
     if ((key = ftok("/bin", 'R')) == -1) {
         perror("ftok");
         exit(1);
     }
 
-    /* connect to (and possibly create) the segment: */
     if ((shmid = shmget(key, SHM_SIZE, 0777 | IPC_CREAT)) == -1) {
         perror("shmget");
         exit(1);
     }
 
-    /* attach to the segment to get a pointer to it: */
     pAddr = shmat(shmid, (void *)0, 0);
     if (pAddr == (char *)(-1)) {
         perror("shmat");
@@ -44,14 +47,42 @@ int p_init() {
 
     return 0;
 }
+*/
+
+int p_init() {
+    int iRet = 0;
+
+    if (pBaseAddr != NULL) {
+        return -1;
+    }
+    /*
+    这个函数将获得该程序的inode，拼接出id，然后查找table；如果发现了，则直接映射上来，
+    否则，分配一块大的区域，清0，然后映射上来
+    */
+    iRet = p_get_small_region(HPID);
+    if (iRet < 0) {
+        printf("error: p_get_small_region\n");
+        return -1;
+    }
+
+    pBaseAddr = p_mmap(NULL, 4096, PROT_READ | PROT_WRITE, HPID);
+    if (!pBaseAddr) {
+        printf("p_mmap return NULL\n");
+    }
+
+    printf("pBaseAddr = %p\n", pBaseAddr);
+
+    return 0;
+}
+
 
 int p_clear() {
-    if (pAddr == NULL) {
+    if (pBaseAddr == NULL) {
         printf("error: call p_init first\n");
         return -1;
     }
 
-    memset(pAddr, 0, SHM_SIZE/9);
+    memset(pBaseAddr, 0, SHM_SIZE/9);
 
     return 0;
 }
@@ -62,7 +93,7 @@ void* p_malloc(int size) {
         return NULL;
     }
 
-    if (pAddr == NULL) {
+    if (pBaseAddr == NULL) {
         printf("error: call p_init first\n");
         return NULL;
     }
@@ -81,7 +112,7 @@ void* p_malloc(int size) {
     int n;
     for (n=0; n<iBitsCount; n++) {
         mask = 1 << (7 - n%8);
-        if (!(pAddr[n/8] & mask)) {
+        if (!(pBaseAddr[n/8] & mask)) {
             // nth bit is empty
 
             switch (state) {
@@ -93,7 +124,7 @@ void* p_malloc(int size) {
                         // we find it 
                         printf("we find it, ready to set bit\n"); 
                         set_bit_to_one(iStartBit, n);
-                        return pAddr + SHM_SIZE/9 + iStartBit; 
+                        return pBaseAddr + SHM_SIZE/9 + iStartBit; 
                     }
 
                     break;
@@ -121,9 +152,9 @@ void set_bit_to_one(int iStartBit, int iEnd) {
     int n;
     for (n=iStartBit; n<=iEnd; n++) {
         mask = 1 << (7 - n%8);
-        pAddr[n/8] |= mask;
+        pBaseAddr[n/8] |= mask;
 
-        //printf("mask=%d,after set: %d\n", mask,pAddr[n/8]&mask);
+        //printf("mask=%d,after set: %d\n", mask,pBaseAddr[n/8]&mask);
     }
 }
 
@@ -133,17 +164,17 @@ int p_free(void *addr, int size) {
         return -1;
     }
 
-    if (addr < pAddr + SHM_SIZE/9 || addr + size > pAddr + SHM_SIZE - 1) {
+    if (addr < pBaseAddr + SHM_SIZE/9 || addr + size > pBaseAddr + SHM_SIZE - 1) {
         printf("addr out of range\n"); 
         return -1;
     }
     
-    int nth = (char*)addr - pAddr - SHM_SIZE/9;
+    int nth = (char*)addr - pBaseAddr - SHM_SIZE/9;
     unsigned char mask;
     int n;
     for (n=nth ; n<nth+size; n++) {
         mask = 1 << (7 - n%8);
-        pAddr[n/8] &= ~mask;
+        pBaseAddr[n/8] &= ~mask;
     }
 
     return 0;
@@ -205,3 +236,4 @@ void *p_get(int pId, int iSize) {
 
     return pAddr;
 }
+

@@ -3334,10 +3334,11 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		struct ptable_node *p_node = search_big_region_node(vma->scm_id);
 		if (!p_node)
 			p_node = search_small_region_node(vma->scm_id);
-
+		if (!p_node)
+			p_node = search_heap_region_node(vma->scm_id);
 		if (!p_node) {
 			daisy_printk("===== fatal error: p_node is null");
-			return -1;
+			ret=VM_FAULT_NOPAGE;
 		}
 
 		vmf.page = (pfn_to_page(p_node->phys_addr >> PAGE_SHIFT));

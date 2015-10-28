@@ -15,8 +15,9 @@
 #define __NR_p_mmap 322
 #define __NR_p_search_big_region_node 323
 #define __NR_p_alloc_and_insert 324
+#define __NR_p_get_small_region 325
 
-#define SHM_SIZE    (1024*9)
+#define SHM_SIZE    (4096)
 
 struct tagMemoryBlock {
     void    *pStart;
@@ -54,3 +55,4 @@ void *p_get(int pId, int iSize);
 void set_bit_to_one(int iStartBit, int iEnd);
 
 #endif
+
