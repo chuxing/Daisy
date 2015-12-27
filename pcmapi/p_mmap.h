@@ -16,6 +16,8 @@
 #define __NR_p_search_big_region_node 323
 #define __NR_p_alloc_and_insert 324
 #define __NR_p_get_small_region 325
+#define __NR_p_bind             326
+#define __NR_p_search_small_region_node 327
 
 #define SHM_SIZE    (4096)
 

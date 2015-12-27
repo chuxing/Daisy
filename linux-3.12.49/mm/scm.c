@@ -493,3 +493,35 @@ SYSCALL_DEFINE1(p_get_small_region, unsigned long, id) {
 
 	return iRet;
 }
+
+
+SYSCALL_DEFINE4(p_bind, unsigned long, id, unsigned long, offset, unsigned long, size, unsigned long, hptable_id) {
+	struct hptable_node *pHpNode = search_heap_region_node(id);
+    if (pHpNode == NULL) {
+		daisy_printk("can not find heap region per program\n");
+        return -1;
+	}
+
+    return insert_small_region_node(id, offset, size, hptable_id);
+}
+
+SYSCALL_DEFINE3(p_search_small_region_node, unsigned long, id, void *, poffset, void *, psize) {
+    int *po = (int *)poffset;
+    int *ps = (int *)psize;
+
+    struct ptable_node *pnode = search_small_region_node(id);
+    if (pnode == NULL) {
+        return -1;
+   }
+    
+    //TODO: hptable_id check
+    if (po != NULL) {
+        *po = pnode->offset;
+    }
+
+    if (ps != NULL) {
+        *ps = pnode->size;
+    }
+
+    return 0;
+}

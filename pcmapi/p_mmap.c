@@ -19,6 +19,15 @@ static int p_get_small_region(unsigned long id) {
 	return (int)syscall(__NR_p_get_small_region, id);
 }
 
+static int p_search_small_region_node(unsigned long id, void *poffset, void *psize) {
+	return (int)syscall(__NR_p_search_small_region_node, id, poffset, psize);
+}
+
+static int p_bind_(unsigned long id, unsigned long offset, unsigned long size, unsigned long hptable_id) {
+    return (int)syscall(__NR_p_bind, id, offset, size, hptable_id);
+}
+
+
 #define HPID    234567
 /*
 int p_init() {
@@ -237,3 +246,24 @@ void *p_get(int pId, int iSize) {
     return pAddr;
 }
 
+int p_bind(int id, void *ptr, int size) {
+    int offset = (int)(ptr - (void *)pBaseAddr);
+    if (offset < 0 || size < 0) {
+        return -1;
+    }
+
+    return p_bind_(id, offset, size, HPID);
+}
+
+void *p_get_bind_node(int pId, int *psize) {
+    int iRet = 0;
+    int offset;
+    
+    iRet = p_search_small_region_node(pId, &offset, psize);
+    if (iRet < 0) {
+        printf("p_search_small_region_node error\n");
+        return NULL;
+    }
+
+    return (void *)pBaseAddr + offset;
+}
