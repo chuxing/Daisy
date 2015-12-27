@@ -496,7 +496,7 @@ SYSCALL_DEFINE1(p_get_small_region, unsigned long, id) {
 
 
 SYSCALL_DEFINE4(p_bind, unsigned long, id, unsigned long, offset, unsigned long, size, unsigned long, hptable_id) {
-	struct hptable_node *pHpNode = search_heap_region_node(id);
+	struct hptable_node *pHpNode = search_heap_region_node(hptable_id);
     if (pHpNode == NULL) {
 		daisy_printk("can not find heap region per program\n");
         return -1;
