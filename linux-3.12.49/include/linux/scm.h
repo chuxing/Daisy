@@ -14,8 +14,8 @@
 */
 
 /* 256M=1G pfns 256*1024/4*/
-#define SCM_PFN_NUM 65536UL //modified by Menooker
-#define SCM_PTABLE_PFN_NUM 256//modified by Menooker
+#define SCM_PFN_NUM 262144UL
+#define SCM_PTABLE_PFN_NUM 1024
 #define SCM_MAGIC 0x01234567
 
 /* flags in struct node */
