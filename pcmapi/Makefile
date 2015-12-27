@@ -4,8 +4,8 @@ CFLAGS=-I.
 all: 
 	$(CC) -m64 -c test.c -o test.o
 	$(CC) -m64 -c p_mmap.c -o p_mmap.o
-	$(CC) -m64 -static -o test test.o p_mmap.o -I.
+	$(CC) -m64 -static -o ptest test.o p_mmap.o -I.
 clean:
-	@rm -rf *.o test
+	@rm -rf *.o ptest
 
 

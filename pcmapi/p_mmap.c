@@ -84,6 +84,10 @@ int p_init() {
     return 0;
 }
 
+void *p_get_base()
+{
+	return pBaseAddr;
+}
 
 int p_clear() {
     if (pBaseAddr == NULL) {

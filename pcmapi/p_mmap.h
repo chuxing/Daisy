@@ -19,7 +19,7 @@
 #define __NR_p_bind             326
 #define __NR_p_search_small_region_node 327
 
-#define SHM_SIZE    (4096)
+#define SHM_SIZE    (4096*16)
 
 struct tagMemoryBlock {
     void    *pStart;
@@ -52,6 +52,11 @@ int p_delete(int pId);
 
 void *p_get(int pId, int iSize);
 
+int p_bind(int id, void *ptr, int size);
+
+void *p_get_bind_node(int pId, int *psize);
+
+void *p_get_base();
 /*** helper functions ***/
 
 void set_bit_to_one(int iStartBit, int iEnd);
