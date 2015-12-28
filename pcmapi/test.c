@@ -38,8 +38,9 @@ int main(int argc, char **argv) {
     	LinkedNode* nd,*last;
     	t==atoi(argv[2]);
     	last=(LinkedNode*)p_malloc(sizeof(LinkedNode));
+    	printf("first node=%llx base=%llx\n",last,base);
 		last->data=-1;
-		p_bind(1234,last,sizeof(LinkedNode));
+		printf("bind %d\n",p_bind(1234,last,sizeof(LinkedNode)));
     	for(i=0;i<t;i++)
     	{
         	nd=(LinkedNode*)p_malloc(sizeof(LinkedNode));
@@ -60,7 +61,7 @@ int main(int argc, char **argv) {
         	if(nd->data!=i)
         	{
         		printf("Check Error! data=%d i=%d\n",nd->data,i);
-        		break;
+        		//break;
         	}
         	i++;
     		if(nd->next)
