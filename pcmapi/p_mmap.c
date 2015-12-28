@@ -74,7 +74,7 @@ int p_init() {
         return -1;
     }
 
-    pBaseAddr = p_mmap(NULL, 4096, PROT_READ | PROT_WRITE, HPID);
+    pBaseAddr = p_mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, HPID);
     if (!pBaseAddr) {
         printf("p_mmap return NULL\n");
     }
