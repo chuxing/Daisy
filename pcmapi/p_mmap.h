@@ -19,7 +19,7 @@
 #define __NR_p_bind             326
 #define __NR_p_search_small_region_node 327
 
-#define SHM_SIZE    (4096*16)
+#define PCM_MAGIC 0x5A5AA5A5
 
 struct tagMemoryBlock {
     void    *pStart;
@@ -35,7 +35,7 @@ struct tagBuddy {
 
 typedef struct tagBuddy Buddy;
 
-int p_init();
+int p_init(int size);
 
 /*
 * 清除pcm上方的元数据

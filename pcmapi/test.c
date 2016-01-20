@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
     char *ptr = NULL;
 
     printf("ready to call p_init\n");
-    iRet = p_init();
+    iRet = p_init(4096 * 16);
     if (iRet < 0) {
         printf("error: p_init\n");
         return -1;

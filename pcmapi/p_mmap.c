@@ -1,7 +1,9 @@
 #include "p_mmap.h"
 
+static int SHM_SIZE = 0;
+
 static char *pBaseAddr = NULL;
-static const int iBitsCount = (SHM_SIZE) / 9 * 8;
+static int iBitsCount = 0;
 
 static void* p_mmap(void* addr,unsigned long len,unsigned long prot,unsigned long id) {
 	return (void*)syscall(__NR_p_mmap, addr, len, prot, id);
@@ -58,12 +60,19 @@ int p_init() {
 }
 */
 
-int p_init() {
+int p_init(int size) {
     int iRet = 0;
 
     if (pBaseAddr != NULL) {
         return -1;
     }
+
+    if (size < 0) {
+        return -1;
+    }
+
+    SHM_SIZE = size;
+    iBitsCount = (SHM_SIZE) / 9 * 8;
     /*
     这个函数将获得该程序的inode，拼接出id，然后查找table；如果发现了，则直接映射上来，
     否则，分配一块大的区域，清0，然后映射上来
@@ -74,11 +83,19 @@ int p_init() {
         return -1;
     }
 
-    pBaseAddr = p_mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, HPID);
+    pBaseAddr = p_mmap(NULL, SHM_SIZE+4, PROT_READ | PROT_WRITE, HPID);
     if (!pBaseAddr) {
         printf("p_mmap return NULL\n");
     }
 
+    int *magic_ptr = (int *)pBaseAddr;
+    pBaseAddr += 4;
+
+    if (*magic_ptr != PCM_MAGIC) {
+        *magic_ptr = PCM_MAGIC;
+        p_clear();
+    }
+    
     printf("pBaseAddr = %p\n", pBaseAddr);
 
     return 0;
