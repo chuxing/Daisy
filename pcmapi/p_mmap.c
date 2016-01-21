@@ -128,6 +128,9 @@ void* p_malloc(int size) {
         return NULL;
     }
 
+    // save size info
+    size += 4;
+
     char curChar;
     unsigned char mask;
     
@@ -138,6 +141,7 @@ void* p_malloc(int size) {
 
     state = STOP;
     int iStartBit = 0;
+    int *ptrSize = NULL;
 
     int n;
     for (n=0; n<iBitsCount; n++) {
@@ -150,11 +154,14 @@ void* p_malloc(int size) {
                     iStartBit = n;
                     state = LOOKING;
                 case LOOKING:
-                    if (n - iStartBit + 1>= size) {
+                    if (n - iStartBit + 1 >= size) {
                         // we find it 
-                        printf("we find it, ready to set bit\n"); 
+                        //printf("we find it, ready to set bit\n"); 
                         set_bit_to_one(iStartBit, n);
-                        return pBaseAddr + SHM_SIZE/9 + iStartBit; 
+                        ptrSize = (int *)(pBaseAddr + SHM_SIZE/9 + iStartBit);
+                        *ptrSize = size;
+
+                        return (void *)(pBaseAddr + SHM_SIZE/9 + iStartBit + 4); 
                     }
 
                     break;
@@ -188,17 +195,21 @@ void set_bit_to_one(int iStartBit, int iEnd) {
     }
 }
 
-int p_free(void *addr, int size) {
-    if (!addr || size <= 0) {
+int p_free(void *addr) {
+    if (!addr) {
         printf("invalid arguments\n");
         return -1;
     }
 
-    if (addr < pBaseAddr + SHM_SIZE/9 || addr + size > pBaseAddr + SHM_SIZE - 1) {
+    if (addr < pBaseAddr + SHM_SIZE/9 || addr > pBaseAddr + SHM_SIZE - 1) {
         printf("addr out of range\n"); 
         return -1;
     }
     
+    int *ptrSize = (int *)(addr - 4);
+    int size = *ptrSize;
+    addr = addr - 4;
+
     int nth = (char*)addr - pBaseAddr - SHM_SIZE/9;
     unsigned char mask;
     int n;
