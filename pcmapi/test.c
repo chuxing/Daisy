@@ -48,6 +48,7 @@ int main(int argc, char **argv) {
 
         return 0;
     }
+    /*
     else if (argc == 3 && argv[1][0] == 'w') { //write the linked list
     	int i;
     	int t;
@@ -115,11 +116,12 @@ int main(int argc, char **argv) {
     }
     else
     	printf("No op\n");
- /*
+    */
+
     ptr = (char *)p_malloc(1);
     printf("return from p_malloc 1, addr=%p\n", ptr);
     
-    p_free(ptr, 1);
+    p_free(ptr);
     printf("after free %p\n", ptr);
 
     ptr = (char *)p_malloc(1);
@@ -134,12 +136,15 @@ int main(int argc, char **argv) {
     ptr = (char *)p_malloc(100);
     printf("return from p_malloc 100, addr=%p\n", ptr);
 
-    p_free(ptr, 100);
+    p_free(ptr);
     printf("after free %p\n", ptr);
 
     ptr = (char *)p_malloc(100);
     printf("return from p_malloc 100, addr=%p\n", ptr);
-    */
+
+    printf("ready to pnew\n");
+    ptr = p_new(100, 4096 * 2);
+    printf("return from p_new %p\n", ptr);
     /*
     printf("ready to call p_get\n");
     ptr = p_get(23, 4096);
