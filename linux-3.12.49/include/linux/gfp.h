@@ -308,6 +308,22 @@ static inline void arch_free_page(struct page *page, int order) { }
 static inline void arch_alloc_page(struct page *page, int order) { }
 #endif
 
+#ifdef CONFIG_SCM
+void freelist_add(struct zone* zone, struct page* page, unsigned long size);
+int freelist_alloc_bulk(struct zone* zone, int size, int count, struct list_head* ret_list);
+struct page* freelist_alloc_one(struct zone* zone, int size);
+int freelist_free_bulk(struct zone* zone, int count, struct list_head* list, int size);
+int freelist_free_one(struct zone* zone, struct page* page, int size);
+
+extern struct page *__alloc_pages_pcm(gfp_t gfp_mask, unsigned order);
+
+static inline struct page *
+alloc_pages_pcm(gfp_t gfp_mask, unsigned int order)
+{
+	return __alloc_pages_pcm(gfp_mask, order);
+}
+#endif
+
 struct page *
 __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order,
 		       struct zonelist *zonelist, nodemask_t *nodemask);

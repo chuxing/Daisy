@@ -2914,3 +2914,23 @@ int mpol_to_str(char *buffer, int maxlen, struct mempolicy *pol)
 	}
 	return p - buffer;
 }
+
+#ifdef CONFIG_SCM
+struct page* __alloc_pages_pcm(gfp_t gfp_mask, unsigned int size) {
+	struct page* page = NULL;
+	struct zonelist* zl =  policy_zonelist(gfp_mask, &default_policy, numa_node_id());
+	struct zoneref* z = zl->_zonerefs;
+	while (is_scm(z->zone))
+		z++;
+	page = freelist_alloc_one(zonelist_zone(z), size);
+	if (page != NULL) {
+		daisy_printk("scm allocated from freelist, pfn: %d, size: %d\n", page_to_pfn(page), size);
+		return page;
+	} else {
+		daisy_printk("scm allocated from buddy\n");
+		unsigned int order = get_order(size);
+		return alloc_pages_current(gfp_mask, order);
+	}
+};
+EXPORT_SYMBOL(__alloc_pages_pcm);
+#endif

@@ -6,6 +6,7 @@
 
 #include <linux/spinlock.h>
 #include <linux/list.h>
+#include <linux/radix-tree.h> // HHX
 #include <linux/wait.h>
 #include <linux/bitops.h>
 #include <linux/cache.h>
@@ -93,6 +94,34 @@ struct free_area {
 	struct list_head	free_list[MIGRATE_TYPES];
 	unsigned long		nr_free;
 };
+
+#ifdef CONFIG_SCM
+// HHX begin
+# define MAX_PAGE_NUMB 16+1
+# define FL_STATUS_FREE 0
+# define FL_STATUS_ALLOCATED 1
+
+# define FL_GET_STATUS(order) ((unsigned int)order) >> 31
+# define FL_GET_SIZE(order) (unsigned int)order & 0xff
+# define FL_GET_ROOTNO(order) (order >> 8) & 0x7fffff
+# define FL_GET_TREE_IDX(page) (((unsigned long long)FL_GET_ROOTNO(page->order))<<32) + (unsigned long long)page->splitno
+# define FL_SET_STATUS(order, value) order = (unsigned int)(order & 0x7fffffff) + (unsigned int)(value << 31)
+# define FL_SET_SIZE(order, value) order = ((order >> 8) << 8) + value
+# define FL_SET_ROOTNO(order, value) order = (order & 0x800000ff) + ((value & 0x7fffff) << 8)
+
+# define FL_GET_FATHER(splitno) (splitno-1)/2
+# define FL_GET_LEFT_SON(splitno) splitno*2+1
+# define FL_GET_RIGHT_SON(splitno) splitno*2+2
+# define FL_GET_BROTHER(splitno) splitno%2 == 0? splitno-1 : splitno+1
+
+struct freelist {
+	struct list_head 	fmem[MAX_PAGE_NUMB]; // store free mem pages
+	int 	fnumb[MAX_PAGE_NUMB];
+	short   nrootno;
+	struct 	radix_tree_root rtree;
+};
+// HHX end
+#endif
 
 struct pglist_data;
 
@@ -472,6 +501,9 @@ struct zone {
 
 	/* free areas of different sizes */
 	struct free_area	free_area[MAX_ORDER];
+#ifdef CONFIG_SCM
+	struct freelist 	fl;  // HHX
+#endif
 
 	/* zone flags, see below */
 	unsigned long		flags;
@@ -901,7 +933,7 @@ static inline int is_highmem_idx(enum zone_type idx)
 }
 
 /**
- * is_highmem - helper function to quickly check if a struct zone is a 
+ * is_highmem - helper function to quickly check if a struct zone is a
  *              highmem zone or not.  This is an attempt to keep references
  *              to ZONE_{DMA/NORMAL/HIGHMEM/etc} in general code to a minimum.
  * @zone - pointer to struct zone variable
@@ -913,6 +945,21 @@ static inline int is_highmem(struct zone *zone)
 	return zone_off == ZONE_HIGHMEM * sizeof(*zone) ||
 	       (zone_off == ZONE_MOVABLE * sizeof(*zone) &&
 		zone_movable_is_highmem());
+#else
+	return 0;
+#endif
+}
+
+/**
+ * is_scm - helper function to quickly check if a struct zone is a
+ *              scm zone or not.
+ * @zone - pointer to struct zone variable
+ */
+static inline int is_scm(struct zone *zone)
+{
+#ifdef CONFIG_SCM
+	int zone_off = (char *)zone - (char *)zone->zone_pgdat->node_zones;
+	return zone_off == ZONE_SCM * sizeof(*zone);
 #else
 	return 0;
 #endif

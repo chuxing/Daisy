@@ -240,6 +240,88 @@ static unsigned long __init free_all_bootmem_core(bootmem_data_t *bdata)
 
 	return count;
 }
+// HHX begins 
+/*
+#ifdef CONFIG_SCM
+static unsigned long __init free_all_bootmem_fl(bootmem_data_t *bdata)
+{
+	daisy_printk("Bootmem pages freed to freelist\n");
+	struct page *page;
+	unsigned long start, end, pages, count = 0;
+
+	if (!bdata->node_bootmem_map)
+		return 0;
+
+	start = bdata->node_min_pfn;
+	end = bdata->node_low_pfn;
+
+	bdebug("nid=%td start=%lx end=%lx\n",
+		bdata - bootmem_node_data, start, end);
+
+	while (start < end) {
+		unsigned long *map, idx, vec;
+		unsigned shift;
+
+		map = bdata->node_bootmem_map;
+		idx = start - bdata->node_min_pfn;
+		shift = idx & (BITS_PER_LONG - 1);
+
+		vec = ~map[idx / BITS_PER_LONG];
+
+		if (shift) {
+			vec >>= shift;
+			if (end - start >= BITS_PER_LONG)
+				vec |= ~map[idx / BITS_PER_LONG + 1] <<
+					(BITS_PER_LONG - shift);
+		}
+		
+		if (IS_ALIGNED(start, BITS_PER_LONG) && vec == ~0UL) {
+			freelist_add(page_zone(pfn_to_page(start)), pfn_to_page(start), BITS_PER_LONG);
+			daisy_printk("%d bootmem has been freed to freelist, start pfn: %d\n", BITS_PER_LONG, start);
+			count += BITS_PER_LONG;
+			start += BITS_PER_LONG;
+		} else {
+			unsigned long cur = start;
+
+			start = ALIGN(start + 1, BITS_PER_LONG);
+			unsigned long tpfn = start;
+			int size = 0;
+			short flag = 1;
+			while (vec && cur != start) {
+				if (vec & 1) {
+					if (!flag) {
+						flag = 1;
+						size = 0;
+						tpfn = cur;
+					}
+					size++;
+					count++;
+				}
+				else if (flag) {
+					flag = 0;
+					freelist_add(page_zone(pfn_to_page(start)), pfn_to_page(tpfn), size);
+					daisy_printk("%d bootmem has been freed to freelist, start pfn: %d\n", size, tpfn);
+				}
+				vec >>= 1;
+				++cur;
+			}
+		}
+	}
+
+	page = virt_to_page(bdata->node_bootmem_map);
+	pages = bdata->node_low_pfn - bdata->node_min_pfn;
+	pages = bootmem_bootmap_pages(pages);
+	count += pages;
+	freelist_add(page_zone(page), page, pages);
+	daisy_printk("%d bootmem has been freed to freelist, start pfn: %d\n", pages, page_to_pfn(page));
+
+	bdebug("nid=%td released=%lx\n", bdata - bootmem_node_data, count);
+
+	return count;
+}
+// HHX ends
+*/
+#endif 
 
 static int reset_managed_pages_done __initdata;
 
@@ -271,12 +353,27 @@ void __init reset_all_zones_managed_pages(void)
 unsigned long __init free_all_bootmem(void)
 {
 	unsigned long total_pages = 0;
+	short flag = 1;
 	bootmem_data_t *bdata;
 
 	reset_all_zones_managed_pages();
 
-	list_for_each_entry(bdata, &bdata_list, list)
-		total_pages += free_all_bootmem_core(bdata);
+	list_for_each_entry(bdata, &bdata_list, list) {  // HHX begins
+		/*
+#ifdef CONFIG_SCM
+		if (is_scm(page_zone(pfn_to_page(bdata->node_min_pfn)))) {
+			if (flag) {
+				flag = 0;
+				total_pages += free_all_bootmem_fl(bdata);
+			} else {
+				flag = 1;
+				total_pages += free_all_bootmem_core(bdata);
+			}
+		}
+		else
+#endif */
+			total_pages += free_all_bootmem_core(bdata);  // HHX ends
+	}
 
 	totalram_pages += total_pages;
 

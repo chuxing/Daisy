@@ -800,6 +800,29 @@ void __init __free_pages_bootmem(struct page *page, unsigned int order)
 	__free_pages(page, order);
 }
 
+#ifdef CONFIG_SCM
+void __init __free_pages_bootmem_fl(struct page *page, unsigned int size)
+{
+	struct page *p = page;
+	unsigned int loop;
+
+	prefetchw(p);
+	for (loop = 0; loop < (size - 1); loop++, p++) {
+	     prefetchw(p + 1);
+	     __ClearPageReserved(p);
+	     set_page_count(p, 0);
+	}
+	__ClearPageReserved(p);
+	set_page_count(p, 0);
+
+	page_zone(page)->managed_pages += size;
+	set_page_refcounted(page);
+	//__free_pages(page, ilog2(BITS_PER_LONG));
+	freelist_add(page_zone(page), page, size);
+	//daisy_printk("%d bootmem has been freed to freelist, pfn: %lu\n", size, page_to_pfn(page));
+}
+#endif
+
 #ifdef CONFIG_CMA
 /* Free whole pageblock and set its migration type to MIGRATE_CMA. */
 void __init init_cma_reserved_pageblock(struct page *page)
@@ -3663,6 +3686,15 @@ static void print_pgdat(pg_data_t *pgdat)
 				break;
 			}
 			daisy_printk("zone->managed_pages: %s %lu\n", z->name, z->managed_pages);
+#ifdef CONFIG_SCM
+			if (is_scm(z)) {
+				int k;
+				struct freelist fl = z->fl;
+				daisy_printk("freelist next rootno: %d\n",fl.nrootno);
+				for (k=1;k<=MAX_PAGE_NUMB;k++) 
+					daisy_printk("number of blocks of size %d: %d, ", k, fl.fnumb[k-1]);
+			}
+#endif
 		}
 		daisy_printk("...\n");
 	}
@@ -4194,6 +4226,20 @@ static void __meminit zone_init_free_lists(struct zone *zone)
 		INIT_LIST_HEAD(&zone->free_area[order].free_list[t]);
 		zone->free_area[order].nr_free = 0;
 	}
+
+#ifdef CONFIG_SCM  // HHX begins
+	if (is_scm(zone)) {
+		daisy_printk("zone %s found\n", zone->name);
+		zone->fl.nrootno = 0;
+		INIT_RADIX_TREE(&(zone->fl.rtree), GFP_KERNEL);  // initial split search tree
+		int i;
+		for (i=0;i<MAX_PAGE_NUMB;i++) {   // initial freelist
+			INIT_LIST_HEAD(&zone->fl.fmem[i]);
+			zone->fl.fnumb[i] = 0;
+		}
+		daisy_printk("freelist initialized...\n");
+	}
+#endif  // HHX ends
 }
 
 #ifndef __HAVE_ARCH_MEMMAP_INIT
@@ -6650,3 +6696,218 @@ void dump_page(struct page *page)
 	dump_page_flags(page->flags);
 	mem_cgroup_print_bad_page(page);
 }
+
+#ifdef CONFIG_SCM
+void freelist_add(struct zone* zone, struct page* page, unsigned long size) {
+    struct freelist* fl = &zone->fl;
+    unsigned long flags;
+    unsigned long long i;
+
+    spin_lock_irqsave(&zone->lock,flags);
+    struct page* p = page;
+    for (i=0;i<size/32;i++) {
+        p->splitno = 0;
+        FL_SET_ROOTNO(p->order, fl->nrootno++);
+        FL_SET_SIZE(p->order, 32);
+        FL_SET_STATUS(p->order, FL_STATUS_FREE);
+
+        // insert treenode of given page to freelist and split search tree
+        list_add(&p->lru,&fl->fmem[MAX_PAGE_NUMB-1]);
+        fl->fnumb[MAX_PAGE_NUMB-1]++;
+        //radix_tree_insert(&fl->rtree, i << 32, p);  // insert node to tree
+        p += 32;
+    }
+    // left part
+    p->splitno = 0;
+    FL_SET_ROOTNO(p->order, fl->nrootno++);
+    FL_SET_SIZE(p->order, size%32);
+    FL_SET_STATUS(p->order, FL_STATUS_FREE);
+    if (size%32 >= MAX_PAGE_NUMB) {
+        list_add(&p->lru,&fl->fmem[MAX_PAGE_NUMB-1]);
+        fl->fnumb[MAX_PAGE_NUMB-1]++;
+    } else {
+        list_add(&p->lru,&fl->fmem[size%32-1]);
+        fl->fnumb[size%32-1]++;
+    }
+    //radix_tree_insert(&fl->rtree, i << 32, p);
+    spin_unlock_irqrestore(&zone->lock,flags);
+};
+EXPORT_SYMBOL(freelist_add);
+
+static struct page* __freelist_split(struct freelist* fl, int fsize, int nsize, short* retsize) { // fsize: found size, nsize: need size
+    struct radix_tree_root* rt = &fl->rtree;
+    struct page* p = list_entry(fl->fmem[fsize-1].next,struct page,lru);  // get head page of fsize from freelist
+
+    radix_tree_delete(rt, FL_GET_TREE_IDX(p));
+    list_del(&p->lru);  // delete it first
+    fl->fnumb[fsize-1]--;
+
+    if (fsize == MAX_PAGE_NUMB)
+        fsize = FL_GET_SIZE(p->order);
+    if (fsize == nsize) {  // sizes match
+        if (retsize)
+            *retsize = 0;
+        FL_SET_STATUS(p->order,FL_STATUS_ALLOCATED);
+        radix_tree_insert(rt, FL_GET_TREE_IDX(p), p); // add allocated pages to tree
+        return p;
+    }
+
+    // not match, split into two parts
+    struct page* ap = p; // first part
+    struct page* bp = ap + nsize; // second part
+    int idx = fsize-nsize > 16 ? MAX_PAGE_NUMB-1 : fsize-nsize-1;
+    int rootno = FL_GET_ROOTNO(p->order);
+
+    bp->splitno = FL_GET_RIGHT_SON(p->splitno); // need to set bpage first!
+    FL_SET_SIZE(bp->order,fsize-nsize);
+    FL_SET_STATUS(bp->order,FL_STATUS_FREE);
+    FL_SET_ROOTNO(bp->order,rootno);
+    if (retsize)
+        *retsize = fsize - nsize;
+    list_add(&bp->lru, &fl->fmem[idx]);
+    fl->fnumb[idx]++;
+
+    ap->splitno = FL_GET_LEFT_SON(p->splitno);
+    FL_SET_SIZE(ap->order,nsize);
+    FL_SET_STATUS(ap->order,FL_STATUS_ALLOCATED);
+    FL_SET_ROOTNO(ap->order,rootno);
+
+    radix_tree_insert(rt, FL_GET_TREE_IDX(ap), ap);
+    radix_tree_insert(rt, FL_GET_TREE_IDX(bp), bp); // add node splited to tree
+
+    return ap;
+};
+
+int freelist_alloc_bulk(struct zone* zone, int size, int count, struct list_head* ret_list) {
+    int i, allocated = 0;
+    unsigned long flags;
+    struct page* ap;
+    struct freelist* fl = &zone->fl;
+
+    spin_lock_irqsave(&zone->lock,flags);
+    for (i=size-1;i<MAX_PAGE_NUMB;i++) {
+        while (fl->fnumb[i]) { // have free pages in this size
+            short retsize;  // return size of spliting
+            ap = __freelist_split(fl, i+1, size, &retsize); // if found larger block, split here and return allocated page
+            allocated++;
+			__mod_zone_page_state(zone, NR_FREE_PAGES, -size);
+            list_add_tail(&ap->lru, ret_list);  // should be add_tail
+
+            if (allocated == count)
+                return allocated;
+            if (retsize < i+1 && retsize >= size) {  // if produce smaller block, restart search from there
+                i = retsize - 2;
+                break;
+            }
+        }
+    }
+    spin_unlock_irqrestore(&zone->lock,flags);
+
+    return allocated;
+};
+EXPORT_SYMBOL(freelist_alloc_bulk);
+
+struct page* freelist_alloc_one(struct zone* zone, int size) {
+	struct list_head head;
+	INIT_LIST_HEAD(&head);
+	freelist_alloc_bulk(zone, size, 1, &head);
+
+	return list_entry(head.next,struct page,lru);
+};
+EXPORT_SYMBOL(freelist_alloc_one);
+
+static struct page* __freelist_merge(struct freelist* fl, struct page* tp) {
+    struct radix_tree_root* rt = &fl->rtree;
+    unsigned long long rootno = ((unsigned long long)FL_GET_ROOTNO(tp->order))<<32;
+    unsigned int curr = tp->splitno;
+    unsigned int currb = FL_GET_BROTHER(curr);
+    if (curr == 0) {  // this page is the greatest ancestor
+        FL_SET_STATUS(tp->order,FL_STATUS_FREE);
+        return tp;
+    }
+    struct page* bp = (struct page*) radix_tree_lookup(rt, rootno+currb);  // check brother
+    if (!bp) {  // brother does not exist
+        FL_SET_STATUS(tp->order,FL_STATUS_FREE);
+        return tp;
+    }
+
+    short status = FL_GET_STATUS(bp->order);
+    int fsize = FL_GET_SIZE(tp->order); // final size
+
+    while (status == FL_STATUS_FREE) {  // loop until brother is not free or does not exist
+        // delete free brother from tree and freelist
+        radix_tree_delete(rt, rootno+currb);
+        list_del(&bp->lru);
+        int tmps = FL_GET_SIZE(bp->order);
+        if (tmps >= MAX_PAGE_NUMB)
+            fl->fnumb[MAX_PAGE_NUMB-1]--;
+        else fl->fnumb[tmps-1]--;
+        // merge page
+        fsize += FL_GET_SIZE(bp->order);
+        if (currb < curr) // if tpage is right brother
+            tp -= FL_GET_SIZE(bp->order);
+
+        curr = FL_GET_FATHER(curr);
+        if (curr == 0) // this page is the greatest ancestor
+            break;
+        currb = FL_GET_BROTHER(curr);
+        bp = (struct page*) radix_tree_lookup(rt, rootno+currb);
+        if (!bp) // brother does not exist
+            break;
+        status = FL_GET_STATUS(bp->order);
+    }
+
+    // set final one
+    FL_SET_STATUS(tp->order,FL_STATUS_FREE);
+    FL_SET_SIZE(tp->order,fsize);
+    FL_SET_ROOTNO(tp->order,(int)(rootno>>32));
+    tp->splitno = curr;
+
+    return tp;
+};
+
+int freelist_free_bulk(struct zone* zone, int count, struct list_head* list, int size) {
+    struct freelist* fl = &zone->fl;
+    struct radix_tree_root* rt = &fl->rtree;
+    unsigned long flags;
+    int ret = 0;
+
+	struct page* tp;
+    while (!list_empty(list) && count) {
+        count--;
+        tp = list_entry(list->prev, struct page, lru);
+        list_del(&tp->lru);  // del it from given list
+        tp = (struct page*) radix_tree_delete(rt, FL_GET_TREE_IDX(tp));  // del its allocated record from split search tree first
+        if (tp == NULL)  // legal check
+            continue;
+        ret++;
+
+        // merge and add
+        spin_lock_irqsave(&zone->lock,flags);
+		__mod_zone_page_state(zone, NR_FREE_PAGES, size);
+        tp = __freelist_merge(fl, tp);
+        radix_tree_insert(rt, FL_GET_TREE_IDX(tp), tp);
+        int tmps = FL_GET_SIZE(tp->order);
+        if (tmps >= MAX_PAGE_NUMB) {
+            list_add(&tp->lru,&fl->fmem[MAX_PAGE_NUMB-1]);
+            fl->fnumb[MAX_PAGE_NUMB-1]++;
+        } else {
+            list_add(&tp->lru,&fl->fmem[tmps-1]);
+            fl->fnumb[tmps-1]++;
+        }
+        spin_unlock_irqrestore(&zone->lock,flags);
+    }
+
+    return ret;
+};
+EXPORT_SYMBOL(freelist_free_bulk);
+
+int freelist_free_one(struct zone* zone, struct page* page, int size) {
+	struct list_head head;
+	INIT_LIST_HEAD(&head);
+	list_add(&page->lru,&head);
+
+	return freelist_free_bulk(zone, 1, &head, size);
+};
+EXPORT_SYMBOL(freelist_free_one);
+#endif
