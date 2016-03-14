@@ -3341,9 +3341,9 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 			ret=VM_FAULT_NOPAGE;
 		}
 
-		vmf.page = (pfn_to_page(p_node->phys_addr >> PAGE_SHIFT));
-		daisy_printk("allocated page: pfn %p\n",
-				PFN_PHYS(page_to_pfn(vmf.page)));
+		vmf.page = (pfn_to_page(p_node->phys_addr >> PAGE_SHIFT)+pgoff);
+		daisy_printk("allocated page: pfn %p offset=%d\n",
+				PFN_PHYS(page_to_pfn(vmf.page)),pgoff);
 		ret=0;
 	}
 	else
