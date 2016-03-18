@@ -76,17 +76,20 @@ void scm_full_test(void)
 }
 /* end FOR DEBUG */
 
+static char *scm_free_pages;
+
 static void  reserve_scm_ptable_memory(void)
 {
 	unsigned long size;
 	phys_addr_t phys;
 	struct scm_head hd;
 	/* get the first 1024 scm pages */
-	size = SCM_PTABLE_PFN_NUM * PAGE_SIZE;
+	size = SCM_PFN_NUM * PAGE_SIZE;
 	/* pages in ZONE_SCM */
 	phys = PFN_PHYS(max_pfn_mapped)-(SCM_PFN_NUM<<PAGE_SHIFT);
 	memblock_reserve(phys, size);
 	scm_head = (struct scm_head*)__va(phys);
+    scm_free_pages = (char *)__va(phys + SCM_PTABLE_PFN_NUM * PAGE_SIZE);
 
 	early_printk("scm_start_phys: %lu scm_head vaddr %lu\n", phys, scm_head);
 	early_printk("Get start pfn: %lu， max_pfn: %lu\n", phys >> PAGE_SHIFT, max_pfn_mapped);
@@ -154,10 +157,15 @@ void  scm_ptable_boot(void)
 	if (scm_head->magic != SCM_MAGIC) {
 		/* this is a new SCM */
 		scm_ptable_init();
+        int i;
+        for (i=0; i<1024+SCM_PFN_NUM/4/1024;i++) {
+            scm_free_pages[i] = 1;
+        }
+
 		//scm_fake_initdata();
 	} else {
 		/* SCM with data! */
-		scm_reserve_used_memory();
+		//scm_reserve_used_memory();
 	}
 }
 
@@ -428,6 +436,22 @@ SYSCALL_DEFINE1(p_search_big_region_node, unsigned long, id) {
 	return (node != NULL);
 }
 
+static void *get_free_page() {
+    int i;
+    for (i=1024+64; i<SCM_PFN_NUM; i++) {
+        if (scm_free_pages[i] == 0) {
+            scm_free_pages[i] = 1;
+            break;
+        }
+    }
+
+    if (i == SCM_PFN_NUM) {
+        return NULL;
+    } else {
+        return __pa((void *)scm_head + i * PAGE_SIZE);
+    }
+}
+
 SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, int, size) {
 	int iRet = 0;
 	struct page *page;
@@ -438,13 +462,17 @@ SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, int, size) {
 	}
 
 	//TODO: calculate order using size
+	// page = get_free_page();
+    /*
 	page = alloc_pages(GFP_KERNEL | GFP_SCM, 0);
 	if (page == NULL) {
 		daisy_printk("error: alloc_pages\n");
 		return -1;
 	}
+    */
 
-	void *pAddr = (page_to_pfn(page) << PAGE_SHIFT);
+	void *pAddr = get_free_page();
+	//void *pAddr = (page_to_pfn(page) << PAGE_SHIFT);
 	if (pAddr == NULL) {
 		daisy_printk("error: page_address");
 		return -1;
@@ -471,13 +499,16 @@ SYSCALL_DEFINE1(p_get_small_region, unsigned long, id) {
 	}
 
 	int iRet = 0;
+    /*
 	struct page *page = alloc_pages(GFP_KERNEL | GFP_SCM, 0);
 	if (page == NULL) {
 		daisy_printk("error: alloc_pages\n");
 		return -1;
 	}
+    */
 
-	void *pAddr = (page_to_pfn(page) << PAGE_SHIFT);
+	//void *pAddr = (page_to_pfn(page) << PAGE_SHIFT);
+    void *pAddr = get_free_page();
 	if (pAddr == NULL) {
 		daisy_printk("error: page_address");
 		return -1;

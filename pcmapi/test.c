@@ -26,6 +26,22 @@ int main(int argc, char **argv) {
     int iRet = 0;
     char *ptr = NULL;
 
+    if (argc < 2) {
+        printf("times of pnew!\n");
+        return 0;
+    }
+
+    int times = atoi(argv[1]);
+
+    int i=0;
+    for (; i<times; i++) {
+        ptr = p_new(i, 4096);
+        if (ptr == NULL) {
+            printf("error p_new\n");
+        }
+    }
+    
+#if 0
     printf("ready to call p_init\n");
     iRet = p_init(4096 * 16);
     if (iRet < 0) {
@@ -106,5 +122,7 @@ int main(int argc, char **argv) {
     	printf("No op\n");
     }
 
+#endif
+    
     return 0;
 }
