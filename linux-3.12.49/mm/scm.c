@@ -431,25 +431,11 @@ SYSCALL_DEFINE1(p_search_big_region_node, unsigned long, id) {
 SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, int, size) {
 	int iRet = 0;
 	struct page *page;
-	int order,i,s=size>>12,target;
-	target=s;
+	int page_size_mask = (4096-1); // we assume 4k a page now
+	int order = ((size+page_size_mask)&~page_size_mask)/(page_size_mask+1);
 	daisy_printk("alloc and insert: id=%d sz=%d\n",id,size);
-	if (size <= 0) {
-		daisy_printk("error: size <= 0");
-		return -1;
-	}
-
-	for(i=0;i<32;i++)
-	{
-		if(s)
-			s=s>>1;
-		else
-			break;
-	}
-	if( (1<<(i-1))==target )
-		i--;
-	printk("Alloc order %d\n",i);
-	page = alloc_pages(GFP_KERNEL | GFP_SCM, i);
+	printk("Alloc order %d\n",order);
+	page = alloc_pages(GFP_KERNEL | GFP_SCM, order);
 	if (page == NULL) {
 		daisy_printk("error: alloc_pages\n");
 		return -1;
