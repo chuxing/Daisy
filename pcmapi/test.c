@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
     int iRet = 0;
     char *ptr = NULL;
 
-    iRet = p_init(4096 * 16);
+    iRet = p_init(4096 * 2);
     if (iRet < 0) {
         printf("error: p_init\n");
         return -1;
