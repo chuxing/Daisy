@@ -428,7 +428,7 @@ SYSCALL_DEFINE1(p_search_big_region_node, unsigned long, id) {
 	return (node != NULL);
 }
 
-SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, int, size) {
+SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, unsigned long, size) {
 	int iRet = 0;
 	struct page *page;
 	int order = 0;
@@ -461,7 +461,7 @@ SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, int, size) {
 	return iRet;
 }
 
-SYSCALL_DEFINE1(p_get_small_region, unsigned long, id) {
+SYSCALL_DEFINE1(p_get_small_region, unsigned long, id, unsigned long, size) {
 	// get id from inode
 	struct hptable_node *pHpNode = search_heap_region_node(id);
 	if (pHpNode != NULL) {
@@ -472,7 +472,13 @@ SYSCALL_DEFINE1(p_get_small_region, unsigned long, id) {
 	}
 
 	int iRet = 0;
-	struct page *page = alloc_pages(GFP_KERNEL | GFP_SCM, 0);
+	int order = 0;
+	int thissize = 4096;
+	while(thissize < size) {
+		thissize*=2;
+	    order++;
+	}
+	struct page *page = alloc_pages(GFP_KERNEL | GFP_SCM, order);
 	if (page == NULL) {
 		daisy_printk("error: alloc_pages\n");
 		return -1;
