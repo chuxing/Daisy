@@ -13,12 +13,12 @@ static int p_search_big_region_node(unsigned long id) {
 	return (int)syscall(__NR_p_search_big_region_node, id);
 }
 
-static int p_alloc_and_insert(unsigned long id, unsigned long size) {
+static int p_alloc_and_insert(unsigned long id, int size) {
     return (int)syscall(__NR_p_alloc_and_insert, id, size);
 }
 
-static int p_get_small_region(unsigned long id, unsigned long size) {
-	return (int)syscall(__NR_p_get_small_region, id, size);
+static int p_get_small_region(unsigned long id,unsigned long size) {
+	return (int)syscall(__NR_p_get_small_region, id,size);
 }
 
 static int p_search_small_region_node(unsigned long id, void *poffset, void *psize) {
@@ -77,13 +77,13 @@ int p_init(int size) {
     这个函数将获得该程序的inode，拼接出id，然后查找table；如果发现了，则直接映射上来，
     否则，分配一块大的区域，清0，然后映射上来
     */
-    iRet = p_get_small_region(HPID, size);
+    iRet = p_get_small_region(HPID,size);
     if (iRet < 0) {
         printf("error: p_get_small_region\n");
         return -1;
     }
 
-    pBaseAddr = p_mmap(NULL, SHM_SIZE+4, PROT_READ | PROT_WRITE, HPID);
+    pBaseAddr = p_mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, HPID);
     if (!pBaseAddr) {
         printf("p_mmap return NULL\n");
     }

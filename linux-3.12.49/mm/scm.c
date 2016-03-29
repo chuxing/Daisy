@@ -461,7 +461,7 @@ SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, unsigned long, size) {
 	return iRet;
 }
 
-SYSCALL_DEFINE1(p_get_small_region, unsigned long, id, unsigned long, size) {
+SYSCALL_DEFINE2(p_get_small_region, unsigned long, id, unsigned long, size) {
 	// get id from inode
 	struct hptable_node *pHpNode = search_heap_region_node(id);
 	if (pHpNode != NULL) {
