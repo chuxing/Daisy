@@ -3459,7 +3459,7 @@ unsigned long do_p_mmap_pgoff(unsigned long addr,
 			return -EPERM;
 
 	/* mlock MCL_FUTURE? */
-	if (vm_flags & VM_LOCKED) {
+	/*if (vm_flags & VM_LOCKED) {
 		unsigned long locked, lock_limit;
 		locked = len >> PAGE_SHIFT;
 		locked += mm->locked_vm;
@@ -3467,7 +3467,7 @@ unsigned long do_p_mmap_pgoff(unsigned long addr,
 		lock_limit >>= PAGE_SHIFT;
 		if (locked > lock_limit && !capable(CAP_IPC_LOCK))
 			return -EAGAIN;
-	}
+	}*/
 
 
 	switch (flags & MAP_TYPE) {
