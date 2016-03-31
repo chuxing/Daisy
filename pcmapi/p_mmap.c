@@ -13,7 +13,7 @@ static int p_search_big_region_node(unsigned long id) {
 	return (int)syscall(__NR_p_search_big_region_node, id);
 }
 
-static int p_alloc_and_insert(unsigned long id, int size) {
+static int p_alloc_and_insert(unsigned long id, unsigned long size) {
     return (int)syscall(__NR_p_alloc_and_insert, id, size);
 }
 
@@ -71,7 +71,7 @@ int p_init(int size) {
         return -1;
     }
 
-    SHM_SIZE = size;
+    SHM_SIZE = size-4;
     iBitsCount = (SHM_SIZE) / 9 * 8;
     /*
     这个函数将获得该程序的inode，拼接出id，然后查找table；如果发现了，则直接映射上来，
@@ -83,7 +83,7 @@ int p_init(int size) {
         return -1;
     }
 
-    pBaseAddr = p_mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, HPID);
+    pBaseAddr = p_mmap(NULL, size, PROT_READ | PROT_WRITE, HPID);
     if (!pBaseAddr) {
         printf("p_mmap return NULL\n");
     }
