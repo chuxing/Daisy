@@ -29,8 +29,8 @@ static int p_bind_(unsigned long id, unsigned long offset, unsigned long size, u
     return (int)syscall(__NR_p_bind, id, offset, size, hptable_id);
 }
 
-
 #define HPID    234567
+
 /*
 int p_init() {
     key_t key;
@@ -74,8 +74,8 @@ int p_init(int size) {
     SHM_SIZE = size-4;
     iBitsCount = (SHM_SIZE) / 9 * 8;
     /*
-    这个函数将获得该程序的inode，拼接出id，然后查找table；如果发现了，则直接映射上来，
-    否则，分配一块大的区域，清0，然后映射上来
+    * get inode, then get id, search table;
+    * if found, attach the memory; or allocate a region and attach it
     */
     iRet = p_get_small_region(HPID,size);
     if (iRet < 0) {
@@ -261,7 +261,7 @@ int p_delete(int pId) {
     return 0;
 }
 
-void *p_get(int pId, int iSize) {
+void *p_get(int pId, int size) {
     int iRet = 0;
     
     iRet = p_search_big_region_node(pId);
@@ -270,7 +270,7 @@ void *p_get(int pId, int iSize) {
         return NULL;
     }
 
-    void *pAddr = p_mmap(NULL, iSize, PROT_READ | PROT_WRITE, pId);
+    void *pAddr = p_mmap(NULL, size, PROT_READ | PROT_WRITE, pId);
     if (!pAddr) {
         printf("p_mmap return NULL\n");
     }

@@ -3310,6 +3310,7 @@ munmap_back:
 	vma->vm_flags = vm_flags;
 	vma->vm_page_prot = vm_get_page_prot(vm_flags);
 	vma->vm_pgoff = pgoff;
+    /* set the scm_id for do_fault function to retrieve the memory region */
 	vma->scm_id = scm_id;
 	INIT_LIST_HEAD(&vma->anon_vma_chain);
 

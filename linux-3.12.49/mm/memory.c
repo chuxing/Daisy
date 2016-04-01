@@ -3329,6 +3329,9 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	vmf.flags = flags;
 	vmf.page = NULL;
 
+    /*
+    * find the page when VM_PCM is set in vma->vm_flags
+    */
 	if (vma->vm_flags & VM_PCM) {
 		daisy_printk("===== scm_id in vma = %d\n", vma->scm_id);
 		struct ptable_node *p_node = search_big_region_node(vma->scm_id);
@@ -3346,9 +3349,7 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 				PFN_PHYS(page_to_pfn(vmf.page)),pgoff);
 		atomic_set(&vmf.page->_mapcount,-1);
 		ret=0;
-	}
-	else
-	{
+	} else {
 		ret = vma->vm_ops->fault(vma, &vmf);
 	}
 	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE |
