@@ -13,9 +13,11 @@
  * data
 */
 
-/* 256M=1G pfns 256*1024/4*/
+// scm pfn numbers
 #define SCM_PFN_NUM 262144UL
+// scm ptable pfn numbers
 #define SCM_PTABLE_PFN_NUM 1024
+// scm magic number
 #define SCM_MAGIC 0x01234567
 
 /* flags in struct node */
@@ -28,9 +30,9 @@ struct ptable_node;
 struct hptable_node;
 
 struct scm_head {
-	unsigned long magic;
-	struct rb_root ptable_rb;
-	struct rb_root hptable_rb;
+	unsigned long magic; /* magic number */
+	struct rb_root ptable_rb; /* ptale rbtree root */
+	struct rb_root hptable_rb; /* hptable rbtree root */
 	unsigned long total_size; /* the total memory length (bytes) */
 	unsigned long len; /* item number */
 	char data[0];
@@ -71,6 +73,7 @@ struct hptable_node {
 	struct rb_node	hptable_rb;
 };
 
+/* ptable/hptable node freelist struct */
 struct table_freelist {
 	void *node_addr;
 	struct list_head list;

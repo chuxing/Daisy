@@ -8,7 +8,7 @@
 static struct scm_head *scm_head;
 static struct table_freelist *table_freelist;
 
-/* FOR DEBUG */
+/* code FOR DEBUG */
 static u64 freecount = 0; // count freelist
 static void scm_print_freelist(void)
 {
@@ -74,8 +74,9 @@ void scm_full_test(void)
 	page = alloc_pages(GFP_KERNEL, 0);
 	daisy_printk("alloc_pages: %s %lu %lu %lu\n", page_zone(page)->name, page_to_pfn(page), PFN_PHYS(page_to_pfn(page)), page_address(page));
 }
-/* end FOR DEBUG */
+/* end code FOR DEBUG */
 
+/* reserve scm ptable/hptable memory */
 static void  reserve_scm_ptable_memory(void)
 {
 	unsigned long size;
@@ -110,6 +111,7 @@ static void scm_ptable_init(void)
 	/* do i need a whole memset (set to 0)? */
 }
 
+/* reserve used scm memory (do not return to buddy system) */
 static void __meminit  scm_reserve_used_memory(void) {
 	struct rb_node *nd;
 	/* ptable */
@@ -230,7 +232,10 @@ static void *get_freenode_addr(void)
 	return ret;
 }
 
-/* return -1 if error & 0 if success */
+/* 
+ * insert new node to ptable rbtree 
+ * return -1 if error & 0 if success 
+ */
 static int insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size, u64 hptable_id, unsigned long flags)
 {
 	struct rb_node **n = &scm_head->ptable_rb.rb_node;
@@ -263,6 +268,10 @@ static int insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size, u64 hptable_i
 	return 0;
 }
 
+/* 
+ * insert new node to hptable rbtree 
+ * return -1 if error & 0 if success 
+ */
 static int insert_hptable_node_rb(u64 _id, u64 phys_addr, u64 size)
 {
 	struct rb_node **n = &scm_head->hptable_rb.rb_node;
@@ -293,6 +302,7 @@ static int insert_hptable_node_rb(u64 _id, u64 phys_addr, u64 size)
 	return 0;
 }
 
+/* wapper function (big region & small region) */
 int insert_big_region_node(u64 _id, u64 phys_addr, u64 size)
 {
 	return insert_ptable_node_rb(_id, phys_addr, size, 0, BIG_MEM_REGION);
@@ -308,7 +318,10 @@ int insert_heap_region_node(u64 _id, u64 phys_addr, u64 size)
 	return insert_hptable_node_rb(_id, phys_addr, size);
 }
 
-/* return NULL if not found */
+/* 
+ * search node in ptable rbtree 
+ * return NULL if not found 
+ */
 static struct ptable_node *search_ptable_node_rb(u64 _id, unsigned long flags)
 {
 	struct rb_node *n;
@@ -335,7 +348,10 @@ static struct ptable_node *search_ptable_node_rb(u64 _id, unsigned long flags)
 	return NULL;
 }
 
-/* return NULL if not found */
+/* 
+ * search node in hptable rbtree 
+ * return NULL if not found 
+ */
 static struct hptable_node *search_hptable_node_rb(u64 _id)
 {
 	struct rb_node *n;
@@ -359,6 +375,7 @@ static struct hptable_node *search_hptable_node_rb(u64 _id)
 	return NULL;
 }
 
+/* wapper function (big region & small region) */
 struct ptable_node *search_big_region_node(u64 _id)
 {
 	return search_ptable_node_rb(_id, BIG_MEM_REGION);
@@ -374,6 +391,7 @@ struct hptable_node *search_heap_region_node(u64 _id)
 	return search_hptable_node_rb(_id);
 }
 
+/* release free node to freelist */
 static void add_freenode_addr(void *addr)
 {
 	struct table_freelist *tmp;
@@ -383,7 +401,10 @@ static void add_freenode_addr(void *addr)
 	freecount++;
 }
 
-/* -1 error, 0 success */
+/* 
+ * delete node in ptable rbtree 
+ * -1 error, 0 success 
+ */
 static int delete_ptable_node_rb(u64 _id, unsigned long flags)
 {
 	struct ptable_node *n;
@@ -396,6 +417,10 @@ static int delete_ptable_node_rb(u64 _id, unsigned long flags)
 	return 0;
 }
 
+/* 
+ * delete node in hptable rbtree 
+ * -1 error, 0 success 
+ */
 static int delete_hptable_node_rb(u64 _id)
 {
 	struct hptable_node *n;
@@ -408,6 +433,7 @@ static int delete_hptable_node_rb(u64 _id)
 	return 0;
 }
 
+/* wapper function (big region & small region) */
 int delete_big_region_node(u64 _id)
 {
 	return delete_ptable_node_rb(_id, BIG_MEM_REGION);
@@ -423,6 +449,7 @@ int delete_heap_region_node(u64 _id)
 	return delete_hptable_node_rb(_id);
 }
 
+/* syscall functions */
 SYSCALL_DEFINE1(p_search_big_region_node, unsigned long, id) {
 	struct ptable_node *node = search_big_region_node(id);
 	return (node != NULL);
@@ -431,7 +458,8 @@ SYSCALL_DEFINE1(p_search_big_region_node, unsigned long, id) {
 SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, unsigned long, size) {
 	int iRet = 0;
 	struct page *page;
-	int order = 0;
+    // decide the order in buddy system
+    int order = 0;
 	int thissize = 4096;
 	while(thissize < size) {
 		thissize*=2;
@@ -439,6 +467,7 @@ SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, unsigned long, size) {
 	}
 	daisy_printk("alloc and insert: id=%d sz=%d\n",id,size);
 	printk("Alloc order %d\n",order);
+    // alloc page
 	page = alloc_pages(GFP_KERNEL | GFP_SCM, order);
 	if (page == NULL) {
 		daisy_printk("error: alloc_pages\n");
@@ -453,6 +482,7 @@ SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, unsigned long, size) {
 		daisy_printk("page's phys addr = %p\n", pAddr);
 	}
 
+    // insert into ptable
 	iRet = insert_big_region_node(id, (u64)pAddr, size);
 	if (iRet != 0) {
 		daisy_printk("error: insert_big_region_node\n");
@@ -471,6 +501,7 @@ SYSCALL_DEFINE2(p_get_small_region, unsigned long, id, unsigned long, size) {
 		daisy_printk("can not find heap region per program\n");
 	}
 
+    // decide the order in buddy system
 	int iRet = 0;
 	int order = 0;
 	int thissize = 4096;
@@ -478,6 +509,7 @@ SYSCALL_DEFINE2(p_get_small_region, unsigned long, id, unsigned long, size) {
 		thissize*=2;
 	    order++;
 	}
+    //alloc page
 	struct page *page = alloc_pages(GFP_KERNEL | GFP_SCM, order);
 	if (page == NULL) {
 		daisy_printk("error: alloc_pages\n");
@@ -491,7 +523,7 @@ SYSCALL_DEFINE2(p_get_small_region, unsigned long, id, unsigned long, size) {
 	} else {
 		daisy_printk("page's phys addr = %p\n", pAddr);
 	}
-
+    // insert into hptable
 	iRet = insert_heap_region_node(id, (u64)pAddr, 4096);
 	if (iRet != 0) {
 		daisy_printk("error: insert_big_region_node\n");
@@ -503,7 +535,8 @@ SYSCALL_DEFINE2(p_get_small_region, unsigned long, id, unsigned long, size) {
 
 
 SYSCALL_DEFINE4(p_bind, unsigned long, id, unsigned long, offset, unsigned long, size, unsigned long, hptable_id) {
-	struct hptable_node *pHpNode = search_heap_region_node(hptable_id);
+    // check hptable	
+    struct hptable_node *pHpNode = search_heap_region_node(hptable_id);
     if (pHpNode == NULL) {
 		daisy_printk("can not find heap region per program\n");
         return -1;
