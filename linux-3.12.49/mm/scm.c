@@ -524,7 +524,7 @@ SYSCALL_DEFINE2(p_get_small_region, unsigned long, id, unsigned long, size) {
 		daisy_printk("page's phys addr = %p\n", pAddr);
 	}
     // insert into hptable
-	iRet = insert_heap_region_node(id, (u64)pAddr, 4096);
+	iRet = insert_heap_region_node(id, (u64)pAddr, size);
 	if (iRet != 0) {
 		daisy_printk("error: insert_big_region_node\n");
 		return -1;
