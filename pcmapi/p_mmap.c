@@ -32,6 +32,21 @@ static int p_bind_(unsigned long id, unsigned long offset, unsigned long size, u
 #define HPID    234567
 
 /*
+* helper functions 
+*/
+void set_bit_to_one(int iStartBit, int iEnd) {
+    unsigned char mask;
+    //printf("in set_bit_to_one, %d, %d", iStartBit, iEnd);
+    int n;
+    for (n=iStartBit; n<=iEnd; n++) {
+        mask = 1 << (7 - n%8);
+        pBaseAddr[n/8] |= mask;
+
+        //printf("mask=%d,after set: %d\n", mask,pBaseAddr[n/8]&mask);
+    }
+}
+
+/*
 int p_init() {
     key_t key;
     int shmid;
@@ -60,6 +75,11 @@ int p_init() {
 }
 */
 
+/*
+* initialize the SCM memory system
+* @param size the size of small region
+* @return value 0 if succeed, otherwise -1
+*/ 
 int p_init(int size) {
     int iRet = 0;
 
@@ -101,11 +121,18 @@ int p_init(int size) {
     return 0;
 }
 
-void *p_get_base()
-{
+/*
+* get the memory base address
+* @return value valid address if succeed, otherwise NULL
+*/
+void *p_get_base() {
 	return pBaseAddr;
 }
 
+/*
+* clear the metadata of small memory region
+* @return value 0 if succeed, otherwise -1
+*/
 int p_clear() {
     if (pBaseAddr == NULL) {
         printf("error: call p_init first\n");
@@ -117,6 +144,11 @@ int p_clear() {
     return 0;
 }
 
+/*
+* allocate a small chunk of memory based on size
+* @param size the size of memory region
+* @return value valid address if succeed, otherwise NULL
+*/
 void* p_malloc(int size) {
     if (size < 0) {
         printf("error: p_malloc, size must be greater than 0");
@@ -183,18 +215,12 @@ void* p_malloc(int size) {
     return NULL;
 }
 
-void set_bit_to_one(int iStartBit, int iEnd) {
-    unsigned char mask;
-    //printf("in set_bit_to_one, %d, %d", iStartBit, iEnd);
-    int n;
-    for (n=iStartBit; n<=iEnd; n++) {
-        mask = 1 << (7 - n%8);
-        pBaseAddr[n/8] |= mask;
 
-        //printf("mask=%d,after set: %d\n", mask,pBaseAddr[n/8]&mask);
-    }
-}
-
+/*
+* deallocate the memory to allocator
+* @param addr the address of memory to be freed
+* @return value 0 if succeed, otherwise -1
+*/
 int p_free(void *addr) {
     if (!addr) {
         printf("invalid arguments\n");
@@ -221,7 +247,13 @@ int p_free(void *addr) {
     return 0;
 }
 
-void *p_new(int pId, int iSize) {
+/*
+* allocate a large chunk of memory based on size
+* @param pId the id of memory region to be allocated
+* @param size the size of memory region
+* @return value valid address if succeed, otherwise NULL
+*/
+void *p_new(int pId, int size) {
     /*
     if (iSize < 4096) {
         return NULL;
@@ -237,14 +269,14 @@ void *p_new(int pId, int iSize) {
         //return NULL;
     }
 
-    iRet = p_alloc_and_insert(pId, iSize);
+    iRet = p_alloc_and_insert(pId, size);
     printf("return from p_alloc_and_insert: %d\n", (int)iRet);
     if (iRet != 0) {
         printf("error: p_alloc_and_insert\n");
         //return NULL;
     }
 
-    void *pAddr = p_mmap(NULL, iSize, PROT_READ | PROT_WRITE, pId);
+    void *pAddr = p_mmap(NULL, size, PROT_READ | PROT_WRITE, pId);
     if (!pAddr) {
         printf("p_mmap return NULL\n");
     }
@@ -252,6 +284,11 @@ void *p_new(int pId, int iSize) {
     return pAddr;
 }
 
+/*
+* deallocate the memory based on pId to allocator
+* @param pId the id of memory region to be delete
+* @return value 0 if succeed, otherwise -1
+*/
 int p_delete(int pId) {
     /*
     p_unmap(pId);
@@ -261,6 +298,12 @@ int p_delete(int pId) {
     return 0;
 }
 
+/*
+* get the memory address base on pId and size
+* @param pId the id of memory region to be retrieved
+* @param size the size of memory
+* @return value valid address if succeed, otherwise NULL
+*/
 void *p_get(int pId, int size) {
     int iRet = 0;
     
@@ -278,6 +321,13 @@ void *p_get(int pId, int size) {
     return pAddr;
 }
 
+/*
+* bind address to id
+* @param id the id to bind
+* @param ptr the address to be bind
+* @param size the size of memory region
+* @return value 0 if succeed, otherwise -1
+*/
 int p_bind(int id, void *ptr, int size) {
     int offset = (int)(ptr - (void *)pBaseAddr);
     if (offset < 0 || size < 0) {
@@ -287,6 +337,12 @@ int p_bind(int id, void *ptr, int size) {
     return p_bind_(id, offset, size, HPID);
 }
 
+/*
+* get the bind node based on pId, 
+* @param pId the id of memory region to be retrieved
+* @param psize push size into *psize
+* @return value valid address if succeed, otherwise NULL
+*/
 void *p_get_bind_node(int pId, int *psize) {
     int iRet = 0;
     int offset;
