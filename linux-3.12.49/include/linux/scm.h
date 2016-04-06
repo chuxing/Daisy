@@ -80,17 +80,78 @@ struct table_freelist {
 };
 
 /* linux/mm/scm.c */
-void scm_ptable_boot(void);
-void scm_freelist_boot(void);
 
+/**
+ * scm persist table boot step
+ * reference to: numa_alloc_distance & numa_reset_distance
+ */
+void scm_ptable_boot(void);
+/**
+ * Just traverse the tree to init the freelist in DRAM
+ * memblock reserve at the same time
+ */
+void scm_freelist_boot(void);
+/* wapper function: search a node in ptable (big region) 
+ * arguments: 
+ *   ptable id
+ * return NULL if not found 
+ */
 struct ptable_node *search_big_region_node(u64 _id);
+/* wapper function: search a node in ptable (small region) 
+ * arguments: 
+ *   ptable id
+ * return NULL if not found 
+ */
 struct ptable_node *search_small_region_node(u64 _id);
+/* wapper function: search a node in hptable 
+ * arguments:
+ *   hptable id
+ * return NULL if not found 
+ */
 struct hptable_node *search_heap_region_node(u64 _id);
+/* 
+ * wapper function: insert a node to ptable rbtree (big region) 
+ * arguments: 
+ *   ptable id, 
+ *   physical address, 
+ *   memory size
+ * return -1 if error & 0 if success 
+ */
 int insert_big_region_node(u64 _id, u64 phys_addr, u64 size);
+/* wapper function: insert a node to ptable rbtree (small region)
+ * arguments: 
+ *   ptable id, 
+ *   memory offset, 
+ *   memory size,
+ *   hptable id
+ * return -1 if error & 0 if success 
+ */
 int insert_small_region_node(u64 _id, u64 offset, u64 size, u64 hptable_id);
+/* wapper function: insert a node to hptable rbtree 
+ * arguments: 
+ *   hptable id, 
+ *   physical address, 
+ *   memory size
+ * return -1 if error & 0 if success 
+ */
 int insert_heap_region_node(u64 _id, u64 phys_addr, u64 size);
+/* wapper function: delete a node from ptable (big region) 
+ * arguments:
+ *   ptable id
+ * -1 error, 0 success 
+ */
 int delete_big_region_node(u64 _id);
+/* wapper function: delete a node from ptable (small region) 
+ * arguments:
+ *   ptable id
+ * -1 error, 0 success 
+ */
 int delete_small_region_node(u64 _id);
+/* wapper function: delete a node from hptable
+ * arguments:
+ *   hptable id
+ * -1 error, 0 success 
+ */
 int delete_heap_region_node(u64 _id);
 
 #endif /* _SCM_H */

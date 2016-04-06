@@ -5,11 +5,15 @@
 #include <linux/rbtree.h>
 #include <linux/syscalls.h>
 
+/* pointer to scm memory head */
 static struct scm_head *scm_head;
+/* pointer to ptable node freelist */
 static struct table_freelist *table_freelist;
 
 /* code FOR DEBUG */
 static u64 freecount = 0; // count freelist
+
+/* print scm freelist status */
 static void scm_print_freelist(void)
 {
 	struct table_freelist *tmp;
@@ -23,6 +27,7 @@ static void scm_print_freelist(void)
 	daisy_printk("\n");
 }
 
+/* print scm ptable node infomation */
 static void scm_print_pnode(struct ptable_node *n)
 {
 	if (n) {
@@ -32,6 +37,7 @@ static void scm_print_pnode(struct ptable_node *n)
 	}
 }
 
+/* generate fake scm init data for test */
 static void scm_fake_initdata(void)
 {
 	struct ptable_node *pnode;
@@ -45,6 +51,7 @@ static void scm_fake_initdata(void)
 	scm_head->hptable_rb.rb_node = &hnode->hptable_rb;
 }
 
+/* test function for scm api */
 void scm_full_test(void)
 {
 	struct ptable_node *n;
@@ -234,6 +241,12 @@ static void *get_freenode_addr(void)
 
 /* 
  * insert new node to ptable rbtree 
+ * arguments: 
+ *   ptable id, 
+ *   physical address, 
+ *   memory size, 
+ *   hptable id, 
+ *   flags
  * return -1 if error & 0 if success 
  */
 static int insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size, u64 hptable_id, unsigned long flags)
@@ -270,6 +283,10 @@ static int insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size, u64 hptable_i
 
 /* 
  * insert new node to hptable rbtree 
+ * arguments: 
+ *   hptable id, 
+ *   physical address, 
+ *   memory size, 
  * return -1 if error & 0 if success 
  */
 static int insert_hptable_node_rb(u64 _id, u64 phys_addr, u64 size)
@@ -302,24 +319,49 @@ static int insert_hptable_node_rb(u64 _id, u64 phys_addr, u64 size)
 	return 0;
 }
 
-/* wapper function (big region & small region) */
+/* 
+ * wapper function: insert a node to ptable rbtree (big region) 
+ * arguments: 
+ *   ptable id, 
+ *   physical address, 
+ *   memory size
+ * return -1 if error & 0 if success 
+ */
 int insert_big_region_node(u64 _id, u64 phys_addr, u64 size)
 {
 	return insert_ptable_node_rb(_id, phys_addr, size, 0, BIG_MEM_REGION);
 }
 
+/* wapper function: insert a node to ptable rbtree (small region)
+ * arguments: 
+ *   ptable id, 
+ *   memory offset, 
+ *   memory size,
+ *   hptable id
+ * return -1 if error & 0 if success 
+ */
 int insert_small_region_node(u64 _id, u64 offset, u64 size, u64 hptable_id)
 {
 	return insert_ptable_node_rb(_id, offset, size, hptable_id, SMALL_MEM_REGION);
 }
 
+/* wapper function: insert a node to hptable rbtree 
+ * arguments: 
+ *   hptable id, 
+ *   physical address, 
+ *   memory size
+ * return -1 if error & 0 if success 
+ */
 int insert_heap_region_node(u64 _id, u64 phys_addr, u64 size)
 {
 	return insert_hptable_node_rb(_id, phys_addr, size);
 }
 
 /* 
- * search node in ptable rbtree 
+ * search node in ptable rbtree
+ * arguments: 
+ *   ptable id, 
+ *   flags
  * return NULL if not found 
  */
 static struct ptable_node *search_ptable_node_rb(u64 _id, unsigned long flags)
@@ -349,7 +391,9 @@ static struct ptable_node *search_ptable_node_rb(u64 _id, unsigned long flags)
 }
 
 /* 
- * search node in hptable rbtree 
+ * search node in hptable rbtree
+ * arguments: 
+ *   hptable id
  * return NULL if not found 
  */
 static struct hptable_node *search_hptable_node_rb(u64 _id)
@@ -375,23 +419,40 @@ static struct hptable_node *search_hptable_node_rb(u64 _id)
 	return NULL;
 }
 
-/* wapper function (big region & small region) */
+/* wapper function: search a node in ptable (big region) 
+ * arguments: 
+ *   ptable id
+ * return NULL if not found 
+ */
 struct ptable_node *search_big_region_node(u64 _id)
 {
 	return search_ptable_node_rb(_id, BIG_MEM_REGION);
 }
 
+/* wapper function: search a node in ptable (small region) 
+ * arguments: 
+ *   ptable id
+ * return NULL if not found 
+ */
 struct ptable_node *search_small_region_node(u64 _id)
 {
 	return search_ptable_node_rb(_id, SMALL_MEM_REGION);
 }
 
+/* wapper function: search a node in hptable 
+ * arguments:
+ *   hptable id
+ * return NULL if not found 
+ */
 struct hptable_node *search_heap_region_node(u64 _id)
 {
 	return search_hptable_node_rb(_id);
 }
 
-/* release free node to freelist */
+/* release free node to freelist 
+ * arguments:
+ *   node address
+ */
 static void add_freenode_addr(void *addr)
 {
 	struct table_freelist *tmp;
@@ -403,6 +464,9 @@ static void add_freenode_addr(void *addr)
 
 /* 
  * delete node in ptable rbtree 
+ * arguments:
+ *   ptable id
+ *   flags
  * -1 error, 0 success 
  */
 static int delete_ptable_node_rb(u64 _id, unsigned long flags)
@@ -418,7 +482,9 @@ static int delete_ptable_node_rb(u64 _id, unsigned long flags)
 }
 
 /* 
- * delete node in hptable rbtree 
+ * delete node in hptable rbtree
+ * arguments:
+ *   hptable id
  * -1 error, 0 success 
  */
 static int delete_hptable_node_rb(u64 _id)
@@ -433,28 +499,56 @@ static int delete_hptable_node_rb(u64 _id)
 	return 0;
 }
 
-/* wapper function (big region & small region) */
+/* wapper function: delete a node from ptable (big region) 
+ * arguments:
+ *   ptable id
+ * -1 error, 0 success 
+ */
 int delete_big_region_node(u64 _id)
 {
 	return delete_ptable_node_rb(_id, BIG_MEM_REGION);
 }
 
+/* wapper function: delete a node from ptable (small region) 
+ * arguments:
+ *   ptable id
+ * -1 error, 0 success 
+ */
 int delete_small_region_node(u64 _id)
 {
 	return delete_ptable_node_rb(_id, SMALL_MEM_REGION);
 }
 
+/* wapper function: delete a node from hptable
+ * arguments:
+ *   hptable id
+ * -1 error, 0 success 
+ */
 int delete_heap_region_node(u64 _id)
 {
 	return delete_hptable_node_rb(_id);
 }
 
 /* syscall functions */
+
+/*
+ * search a node from big region
+ * arguments:
+ *   ptable id
+ * exist return true, else return false
+ */
 SYSCALL_DEFINE1(p_search_big_region_node, unsigned long, id) {
 	struct ptable_node *node = search_big_region_node(id);
 	return (node != NULL);
 }
 
+/*
+ * alloc small region and insert node to hptable
+ * arguments:
+ *   ptable id
+ *   memory size
+ * return node
+ */
 SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, unsigned long, size) {
 	int iRet = 0;
 	struct page *page;
@@ -491,6 +585,13 @@ SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, unsigned long, size) {
 	return iRet;
 }
 
+/*
+ * get small region infomation
+ * arguments:
+ *   hptable id
+ *   memory size
+ * return node
+ */
 SYSCALL_DEFINE2(p_get_small_region, unsigned long, id, unsigned long, size) {
 	// get id from inode
 	struct hptable_node *pHpNode = search_heap_region_node(id);
@@ -533,7 +634,15 @@ SYSCALL_DEFINE2(p_get_small_region, unsigned long, id, unsigned long, size) {
 	return iRet;
 }
 
-
+/*
+ * bind id to small region node
+ * arguments:
+ *   ptable id
+ *   memory offset
+ *   memory size
+ *   hptable id
+ * return node
+ */
 SYSCALL_DEFINE4(p_bind, unsigned long, id, unsigned long, offset, unsigned long, size, unsigned long, hptable_id) {
     // check hptable	
     struct hptable_node *pHpNode = search_heap_region_node(hptable_id);
@@ -545,6 +654,14 @@ SYSCALL_DEFINE4(p_bind, unsigned long, id, unsigned long, offset, unsigned long,
     return insert_small_region_node(id, offset, size, hptable_id);
 }
 
+/*
+ * search a node from small region
+ * arguments:
+ *   ptable id
+ *   memory offset
+ *   memory size
+ * success return 0 else return -1
+ */
 SYSCALL_DEFINE3(p_search_small_region_node, unsigned long, id, void *, poffset, void *, psize) {
     int *po = (int *)poffset;
     int *ps = (int *)psize;
