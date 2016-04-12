@@ -13,6 +13,8 @@ static struct table_freelist *table_freelist;
 /* code FOR DEBUG */
 static u64 freecount = 0; // count freelist
 
+static char *scm_free_pages;
+
 /* print scm freelist status */
 static void scm_print_freelist(void)
 {
@@ -90,11 +92,13 @@ static void  reserve_scm_ptable_memory(void)
 	phys_addr_t phys;
 	struct scm_head hd;
 	/* get the first 1024 scm pages */
-	size = SCM_PTABLE_PFN_NUM * PAGE_SIZE;
+	size = (SCM_PTABLE_PFN_NUM+SCM_BIGREGION_NUM+SCM_BITMAP_NUM) * PAGE_SIZE;
 	/* pages in ZONE_SCM */
 	phys = PFN_PHYS(max_pfn_mapped)-(SCM_PFN_NUM<<PAGE_SHIFT);
 	memblock_reserve(phys, size);
 	scm_head = (struct scm_head*)__va(phys);
+	
+	scm_free_pages = (char *)__va(phys + SCM_PTABLE_PFN_NUM * PAGE_SIZE);
 
 	early_printk("scm_start_phys: %lu scm_head vaddr %lu\n", phys, scm_head);
 	early_printk("Get start pfn: %lu， max_pfn: %lu\n", phys >> PAGE_SHIFT, max_pfn_mapped);
@@ -163,6 +167,10 @@ void  scm_ptable_boot(void)
 	if (scm_head->magic != SCM_MAGIC) {
 		/* this is a new SCM */
 		scm_ptable_init();
+	int i;
+        for (i=0; i<SCM_BIGREGION_NUM;i++) {
+           scm_free_pages[i] = 0;
+        }
 		//scm_fake_initdata();
 	} else {
 		/* SCM with data! */
@@ -529,6 +537,25 @@ int delete_heap_region_node(u64 _id)
 	return delete_hptable_node_rb(_id);
 }
 
+
+static void *get_free_page(u64 num) {
+    int i,j;
+    for (i=0; i<SCM_BIGREGION_NUM; i++) {
+        if (scm_free_pages[i] == 0) {
+            //scm_free_pages[i] = 1;
+            break;
+        }
+    }
+
+    if (i == SCM_BIGREGION_NUM) {
+        return NULL;
+    } else {
+	for (j=i; j<i+num; j++)
+		scm_free_pages[i] = 1;	
+        return __pa((void *)scm_head + (i+SCM_PTABLE_PFN_NUM+SCM_BITMAP_NUM) * PAGE_SIZE);
+    }
+}
+
 /* syscall functions */
 
 /*
@@ -537,6 +564,7 @@ int delete_heap_region_node(u64 _id)
  *   ptable id
  * exist return true, else return false
  */
+
 SYSCALL_DEFINE1(p_search_big_region_node, unsigned long, id) {
 	struct ptable_node *node = search_big_region_node(id);
 	return (node != NULL);
@@ -593,17 +621,28 @@ SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, unsigned long, size) {
  * return node
  */
 SYSCALL_DEFINE2(p_get_small_region, unsigned long, id, unsigned long, size) {
+
 	// get id from inode
 	struct hptable_node *pHpNode = search_heap_region_node(id);
+	int iRet = 0;
 	if (pHpNode != NULL) {
 		daisy_printk("find heap region per program\n");
 		return 0;
 	} else {
 		daisy_printk("can not find heap region per program\n");
 	}
-
+	//allocate for more than 8M
+	if(size>8*1024*1024)
+	{
+	void *pAddr = get_free_page(size);
+	iRet = insert_heap_region_node(id, (u64)pAddr, size);
+	if (iRet != 0) {
+		daisy_printk("error: insert_big_region_node\n");
+		return -1;
+	}
+	return iRet;
+	}
     // decide the order in buddy system
-	int iRet = 0;
 	int order = 0;
 	int thissize = 4096;
 	while(thissize < size) {

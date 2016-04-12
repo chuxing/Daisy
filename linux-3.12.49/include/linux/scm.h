@@ -14,7 +14,13 @@
 */
 
 // scm pfn numbers
-#define SCM_PFN_NUM 262144UL
+//#define SCM_PFN_NUM 262144UL
+// scm pfn numbers
+#define SCM_PFN_NUM 419430UL
+//scm pages for big region
+#define SCM_BIGREGION_NUM 262144UL
+//scm pages for bitmap for big region
+#define SCM_BITMAP_NUM 64UL
 // scm ptable pfn numbers
 #define SCM_PTABLE_PFN_NUM 1024
 // scm magic number
