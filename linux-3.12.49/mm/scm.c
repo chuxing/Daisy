@@ -108,7 +108,7 @@ static void  reserve_scm_ptable_memory(void)
 		daisy_printk("TODO we need a warning or realloc here.\n");
 	}
 
-	scm_head->total_size = size;
+	scm_head->total_size = SCM_PTABLE_PFN_NUM * PAGE_SIZE;
 }
 
 /* Init a total new SCM (no data) */
@@ -540,6 +540,7 @@ int delete_heap_region_node(u64 _id)
 
 static void *get_free_page(u64 num) {
     int i,j;
+    struct page* page;
     for (i=0; i<SCM_BIGREGION_NUM; i++) {
         if (scm_free_pages[i] == 0) {
             //scm_free_pages[i] = 1;
@@ -550,8 +551,11 @@ static void *get_free_page(u64 num) {
     if (i == SCM_BIGREGION_NUM) {
         return NULL;
     } else {
-	for (j=i; j<i+num; j++)
-		scm_free_pages[i] = 1;	
+		for (j=i; j<i+num; j++)
+		{
+			scm_free_pages[i] = 1;
+		}
+
         return __pa((void *)scm_head + (i+SCM_PTABLE_PFN_NUM+SCM_BITMAP_NUM) * PAGE_SIZE);
     }
 }
