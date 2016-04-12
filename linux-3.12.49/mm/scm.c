@@ -580,6 +580,16 @@ SYSCALL_DEFINE1(p_search_big_region_node, unsigned long, id) {
 SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, unsigned long, size) {
 	int iRet = 0;
 	struct page *page;
+	//allocate for more than 8M
+	if(size>=8*1024*1024)
+	{
+		void *pAddr = get_free_page(size);
+		iRet = insert_big_region_node(id, (u64)pAddr, size);
+		if (iRet != 0) {
+			daisy_printk("error: insert_big_region_node\n");
+		}
+		return iRet;
+	}
     // decide the order in buddy system
     int order = 0;
 	int thissize = 4096;
@@ -632,15 +642,15 @@ SYSCALL_DEFINE2(p_get_small_region, unsigned long, id, unsigned long, size) {
 		daisy_printk("can not find heap region per program\n");
 	}
 	//allocate for more than 8M
-	if(size>8*1024*1024)
+	if(size>=8*1024*1024)
 	{
-	void *pAddr = get_free_page(size);
-	iRet = insert_heap_region_node(id, (u64)pAddr, size);
-	if (iRet != 0) {
-		daisy_printk("error: insert_big_region_node\n");
-		return -1;
-	}
-	return iRet;
+		void *pAddr = get_free_page(size);
+		iRet = insert_heap_region_node(id, (u64)pAddr, size);
+		if (iRet != 0) {
+			daisy_printk("error: insert_big_region_node\n");
+			return -1;
+		}
+		return iRet;
 	}
     // decide the order in buddy system
 	int order = 0;

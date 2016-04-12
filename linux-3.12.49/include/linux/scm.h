@@ -18,7 +18,7 @@
 // scm pfn numbers
 #define SCM_PFN_NUM 419430UL
 //scm pages for big region
-#define SCM_BIGREGION_NUM 262144UL
+#define SCM_BIGREGION_NUM 32768UL
 //scm pages for bitmap for big region
 #define SCM_BITMAP_NUM 64UL
 // scm ptable pfn numbers
