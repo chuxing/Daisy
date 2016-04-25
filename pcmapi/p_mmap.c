@@ -144,6 +144,7 @@ int p_clear() {
     return 0;
 }
 
+static int next_bit = 0;
 /*
 * allocate a small chunk of memory based on size
 * @param size the size of memory region
@@ -175,8 +176,18 @@ void* p_malloc(int size) {
     int iStartBit = 0;
     int *ptrSize = NULL;
 
-    int n;
-    for (n=0; n<iBitsCount; n++) {
+    int n, i;
+    int ag = 1;
+    for (i=0; i<iBitsCount; i++) {
+        n = next_bit + i;
+        if (n >= iBitsCount && ag) {
+            state = STOP;
+            next_bit = 0;
+            n = -1;
+            ag = 0;
+            continue;
+        }
+
         mask = 1 << (7 - n%8);
         if (!(pBaseAddr[n/8] & mask)) {
             // nth bit is empty
@@ -192,6 +203,7 @@ void* p_malloc(int size) {
                         set_bit_to_one(iStartBit, n);
                         ptrSize = (int *)(pBaseAddr + SHM_SIZE/9 + iStartBit);
                         *ptrSize = size;
+                        next_bit = n+1;
 
                         return (void *)(pBaseAddr + SHM_SIZE/9 + iStartBit + 4); 
                     }
