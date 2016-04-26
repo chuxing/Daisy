@@ -21,6 +21,8 @@
 
 #define PCM_MAGIC 0x5A5AA5A5
 
+#define BITMAPGRAN 8    /* n means 1 bit to n byte */
+
 /*
 * initialize the SCM memory system
 * @param size the size of small region

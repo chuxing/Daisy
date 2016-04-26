@@ -92,7 +92,7 @@ int p_init(int size) {
     }
 
     SHM_SIZE = size-4;
-    iBitsCount = (SHM_SIZE) / 9 * 8;
+    iBitsCount = (SHM_SIZE)/(1 + BITMAPGRAN*8) * 8;
     /*
     * get inode, then get id, search table;
     * if found, attach the memory; or allocate a region and attach it
@@ -139,7 +139,7 @@ int p_clear() {
         return -1;
     }
 
-    memset(pBaseAddr, 0, SHM_SIZE/9);
+    memset(pBaseAddr, 0, SHM_SIZE/(1 + BITMAPGRAN*8));
 
     return 0;
 }
@@ -197,15 +197,15 @@ void* p_malloc(int size) {
                     iStartBit = n;
                     state = LOOKING;
                 case LOOKING:
-                    if (n - iStartBit + 1 >= size) {
+                    if ((n - iStartBit + 1) * BITMAPGRAN >= size) {
                         // we find it 
-                        //printf("we find it, ready to set bit\n"); 
+                        // printf("we find it, ready to set bit\n"); 
                         set_bit_to_one(iStartBit, n);
-                        ptrSize = (int *)(pBaseAddr + SHM_SIZE/9 + iStartBit);
+                        ptrSize = (int *)(pBaseAddr + SHM_SIZE/(1 + BITMAPGRAN*8) + iStartBit * BITMAPGRAN);
                         *ptrSize = size;
-                        next_bit = n+1;
+                        next_bit = n + 1;
 
-                        return (void *)(pBaseAddr + SHM_SIZE/9 + iStartBit + 4); 
+                        return (void *)(pBaseAddr + SHM_SIZE/(1 + BITMAPGRAN*8) + iStartBit * BITMAPGRAN + 4); 
                     }
 
                     break;
@@ -239,7 +239,7 @@ int p_free(void *addr) {
         return -1;
     }
 
-    if (addr < pBaseAddr + SHM_SIZE/9 || addr > pBaseAddr + SHM_SIZE - 1) {
+    if (addr < pBaseAddr + SHM_SIZE/(1 + BITMAPGRAN*8) || addr > pBaseAddr + SHM_SIZE - 1) {
         printf("addr out of range\n"); 
         return -1;
     }
@@ -248,9 +248,11 @@ int p_free(void *addr) {
     int size = *ptrSize;
     addr = addr - 4;
 
-    int nth = (char*)addr - pBaseAddr - SHM_SIZE/9;
+    int nth = ((char*)addr - pBaseAddr - SHM_SIZE/(1 + BITMAPGRAN*8)) / (BITMAPGRAN);
     unsigned char mask;
     int n;
+    size = (size + BITMAPGRAN - 1)/ BITMAPGRAN;
+
     for (n=nth ; n<nth+size; n++) {
         mask = 1 << (7 - n%8);
         pBaseAddr[n/8] &= ~mask;
