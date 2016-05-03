@@ -8,6 +8,8 @@
 * ./a.out c (reset the memory allocator)
 * ./a.out w 10 (write the linked list)
 * ./a.out r (read and check the linked list)
+* ./a.out n (alloc and write a large chunk of memory on scm)
+* ./a.out m (re-map and read a large chunk of memory on scm)
 */
 
 typedef struct {
@@ -68,9 +70,26 @@ int main(int argc, char **argv) {
     		else
     			break;
     	}
-
     	printf("Check finish! i=%d\n",i);
-    } else {
+    }else if (argc == 2 && argv[1][0] == 'n') {
+    	int* buf=p_new(10000,4096*2);
+    	int i;
+    	for(i=0;i<4096*2/sizeof(int);i++)
+    	{
+    		buf[i]=i;
+    	}
+    }else if (argc == 2 && argv[1][0] == 'm') {
+    	int* buf=p_get(10000,4096*2);
+    	int i;
+    	for(i=0;i<4096*2/sizeof(int);i++)
+    	{
+    		if(buf[i]!=i)
+    			printf("Check Error! data=%d i=%d\n",buf[i],i);
+    	}
+    	printf("Check finish!\n");
+    }
+    else {
+
     	printf("No op\n");
     }
 
