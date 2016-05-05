@@ -562,6 +562,20 @@ static void *get_free_page(u64 num) {
 
 /* syscall functions */
 
+
+/*
+ * delete a node from big region
+ * arguments:
+ *   ptable id
+ * -1 error, 0 success
+ */
+SYSCALL_DEFINE1(p_delete_big_region_node,u64, _id)
+{
+	printk("Delete node %d\n",_id);
+	return delete_big_region_node(_id);
+}
+
+
 /*
  * search a node from big region
  * arguments:

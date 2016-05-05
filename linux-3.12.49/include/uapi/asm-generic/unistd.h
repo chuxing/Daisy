@@ -706,12 +706,13 @@ __SYSCALL(__NR_p_get_small_region, sys_p_get_small_region)
 __SYSCALL(__NR_p_bind, sys_p_bind)
 #define __NR_p_search_small_region_node 327
 __SYSCALL(__NR_p_search_small_region_node, sys_p_search_small_region_node)
-
+#define __NR_p_search_small_region_node 328
+__SYSCALL(__NR_p_delete_big_region_node, sys_p_delete_big_region_node)
 
 /*PCM system call definitions end here*/
 
 #undef __NR_syscalls
-#define __NR_syscalls 280
+#define __NR_syscalls 281
 
 /*
  * All syscalls below here should go away really,

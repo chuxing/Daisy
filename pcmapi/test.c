@@ -88,6 +88,9 @@ int main(int argc, char **argv) {
     	}
     	printf("Check finish!\n");
     }
+    else if (argc == 2 && argv[1][0] == 'd') {
+        	printf("p_delete returns %d\n",p_delete(10000));
+    }
     else {
 
     	printf("No op\n");

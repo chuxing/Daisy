@@ -326,6 +326,7 @@
 325 64		p_get_small_region				sys_p_get_small_region
 326 64      p_bind                          sys_p_bind
 327 64 		p_search_small_region_node		sys_p_search_small_region_node
+328 64 		p_delete_big_region_node		sys_p_delete_big_region_node
 
 #
 # x32-specific system call numbers start at 512 to avoid cache impact

@@ -13,7 +13,11 @@ static int p_search_big_region_node(unsigned long id) {
 	return (int)syscall(__NR_p_search_big_region_node, id);
 }
 
-static int p_alloc_and_insert(unsigned long id, unsigned long size) {
+static int p_delete_big_region_node(unsigned long id) {
+	return (int)syscall(__NR_p_delete_big_region_node, id);
+}
+
+static int p_alloc_and_insert(unsigned long id, int size) {
     return (int)syscall(__NR_p_alloc_and_insert, id, size);
 }
 
@@ -29,23 +33,8 @@ static int p_bind_(unsigned long id, unsigned long offset, unsigned long size, u
     return (int)syscall(__NR_p_bind, id, offset, size, hptable_id);
 }
 
+
 #define HPID    234567
-
-/*
-* helper functions 
-*/
-void set_bit_to_one(int iStartBit, int iEnd) {
-    unsigned char mask;
-    //printf("in set_bit_to_one, %d, %d", iStartBit, iEnd);
-    int n;
-    for (n=iStartBit; n<=iEnd; n++) {
-        mask = 1 << (7 - n%8);
-        pBaseAddr[n/8] |= mask;
-
-        //printf("mask=%d,after set: %d\n", mask,pBaseAddr[n/8]&mask);
-    }
-}
-
 /*
 int p_init() {
     key_t key;
@@ -75,11 +64,6 @@ int p_init() {
 }
 */
 
-/*
-* initialize the SCM memory system
-* @param size the size of small region
-* @return value 0 if succeed, otherwise -1
-*/ 
 int p_init(int size) {
     int iRet = 0;
 
@@ -91,11 +75,11 @@ int p_init(int size) {
         return -1;
     }
 
-    SHM_SIZE = size-4;
-    iBitsCount = (SHM_SIZE)/(1 + BITMAPGRAN*8) * 8;
+    SHM_SIZE = size;
+    iBitsCount = (SHM_SIZE) / 9 * 8;
     /*
-    * get inode, then get id, search table;
-    * if found, attach the memory; or allocate a region and attach it
+    这个函数将获得该程序的inode，拼接出id，然后查找table；如果发现了，则直接映射上来，
+    否则，分配一块大的区域，清0，然后映射上来
     */
     iRet = p_get_small_region(HPID,size);
     if (iRet < 0) {
@@ -103,7 +87,7 @@ int p_init(int size) {
         return -1;
     }
 
-    pBaseAddr = p_mmap(NULL, size, PROT_READ | PROT_WRITE, HPID);
+    pBaseAddr = p_mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, HPID);
     if (!pBaseAddr) {
         printf("p_mmap return NULL\n");
     }
@@ -121,35 +105,22 @@ int p_init(int size) {
     return 0;
 }
 
-/*
-* get the memory base address
-* @return value valid address if succeed, otherwise NULL
-*/
-void *p_get_base() {
+void *p_get_base()
+{
 	return pBaseAddr;
 }
 
-/*
-* clear the metadata of small memory region
-* @return value 0 if succeed, otherwise -1
-*/
 int p_clear() {
     if (pBaseAddr == NULL) {
         printf("error: call p_init first\n");
         return -1;
     }
 
-    memset(pBaseAddr, 0, SHM_SIZE/(1 + BITMAPGRAN*8));
+    memset(pBaseAddr, 0, SHM_SIZE/9);
 
     return 0;
 }
 
-static int next_bit = 0;
-/*
-* allocate a small chunk of memory based on size
-* @param size the size of memory region
-* @return value valid address if succeed, otherwise NULL
-*/
 void* p_malloc(int size) {
     if (size < 0) {
         printf("error: p_malloc, size must be greater than 0");
@@ -176,18 +147,8 @@ void* p_malloc(int size) {
     int iStartBit = 0;
     int *ptrSize = NULL;
 
-    int n, i;
-    int ag = 1;
-    for (i=0; i<iBitsCount; i++) {
-        n = next_bit + i;
-        if (n >= iBitsCount && ag) {
-            state = STOP;
-            next_bit = 0;
-            n = -1;
-            ag = 0;
-            continue;
-        }
-
+    int n;
+    for (n=0; n<iBitsCount; n++) {
         mask = 1 << (7 - n%8);
         if (!(pBaseAddr[n/8] & mask)) {
             // nth bit is empty
@@ -197,15 +158,14 @@ void* p_malloc(int size) {
                     iStartBit = n;
                     state = LOOKING;
                 case LOOKING:
-                    if ((n - iStartBit + 1) * BITMAPGRAN >= size) {
+                    if (n - iStartBit + 1 >= size) {
                         // we find it 
-                        // printf("we find it, ready to set bit\n"); 
+                        //printf("we find it, ready to set bit\n"); 
                         set_bit_to_one(iStartBit, n);
-                        ptrSize = (int *)(pBaseAddr + SHM_SIZE/(1 + BITMAPGRAN*8) + iStartBit * BITMAPGRAN);
+                        ptrSize = (int *)(pBaseAddr + SHM_SIZE/9 + iStartBit);
                         *ptrSize = size;
-                        next_bit = n + 1;
 
-                        return (void *)(pBaseAddr + SHM_SIZE/(1 + BITMAPGRAN*8) + iStartBit * BITMAPGRAN + 4); 
+                        return (void *)(pBaseAddr + SHM_SIZE/9 + iStartBit + 4); 
                     }
 
                     break;
@@ -227,19 +187,25 @@ void* p_malloc(int size) {
     return NULL;
 }
 
+void set_bit_to_one(int iStartBit, int iEnd) {
+    unsigned char mask;
+    //printf("in set_bit_to_one, %d, %d", iStartBit, iEnd);
+    int n;
+    for (n=iStartBit; n<=iEnd; n++) {
+        mask = 1 << (7 - n%8);
+        pBaseAddr[n/8] |= mask;
 
-/*
-* deallocate the memory to allocator
-* @param addr the address of memory to be freed
-* @return value 0 if succeed, otherwise -1
-*/
+        //printf("mask=%d,after set: %d\n", mask,pBaseAddr[n/8]&mask);
+    }
+}
+
 int p_free(void *addr) {
     if (!addr) {
         printf("invalid arguments\n");
         return -1;
     }
 
-    if (addr < pBaseAddr + SHM_SIZE/(1 + BITMAPGRAN*8) || addr > pBaseAddr + SHM_SIZE - 1) {
+    if (addr < pBaseAddr + SHM_SIZE/9 || addr > pBaseAddr + SHM_SIZE - 1) {
         printf("addr out of range\n"); 
         return -1;
     }
@@ -248,11 +214,9 @@ int p_free(void *addr) {
     int size = *ptrSize;
     addr = addr - 4;
 
-    int nth = ((char*)addr - pBaseAddr - SHM_SIZE/(1 + BITMAPGRAN*8)) / (BITMAPGRAN);
+    int nth = (char*)addr - pBaseAddr - SHM_SIZE/9;
     unsigned char mask;
     int n;
-    size = (size + BITMAPGRAN - 1)/ BITMAPGRAN;
-
     for (n=nth ; n<nth+size; n++) {
         mask = 1 << (7 - n%8);
         pBaseAddr[n/8] &= ~mask;
@@ -261,13 +225,7 @@ int p_free(void *addr) {
     return 0;
 }
 
-/*
-* allocate a large chunk of memory based on size
-* @param pId the id of memory region to be allocated
-* @param size the size of memory region
-* @return value valid address if succeed, otherwise NULL
-*/
-void *p_new(int pId, int size) {
+void *p_new(int pId, int iSize) {
     /*
     if (iSize < 4096) {
         return NULL;
@@ -283,14 +241,14 @@ void *p_new(int pId, int size) {
         //return NULL;
     }
 
-    iRet = p_alloc_and_insert(pId, size);
+    iRet = p_alloc_and_insert(pId, iSize);
     printf("return from p_alloc_and_insert: %d\n", (int)iRet);
     if (iRet != 0) {
         printf("error: p_alloc_and_insert\n");
         //return NULL;
     }
 
-    void *pAddr = p_mmap(NULL, size, PROT_READ | PROT_WRITE, pId);
+    void *pAddr = p_mmap(NULL, iSize, PROT_READ | PROT_WRITE, pId);
     if (!pAddr) {
         printf("p_mmap return NULL\n");
     }
@@ -298,27 +256,15 @@ void *p_new(int pId, int size) {
     return pAddr;
 }
 
-/*
-* deallocate the memory based on pId to allocator
-* @param pId the id of memory region to be delete
-* @return value 0 if succeed, otherwise -1
-*/
 int p_delete(int pId) {
     /*
     p_unmap(pId);
     p_tab_delete(pId);
     */
-   
-    return 0;
+    return p_delete_big_region_node(pId);
 }
 
-/*
-* get the memory address base on pId and size
-* @param pId the id of memory region to be retrieved
-* @param size the size of memory
-* @return value valid address if succeed, otherwise NULL
-*/
-void *p_get(int pId, int size) {
+void *p_get(int pId, int iSize) {
     int iRet = 0;
     
     iRet = p_search_big_region_node(pId);
@@ -327,7 +273,7 @@ void *p_get(int pId, int size) {
         return NULL;
     }
 
-    void *pAddr = p_mmap(NULL, size, PROT_READ | PROT_WRITE, pId);
+    void *pAddr = p_mmap(NULL, iSize, PROT_READ | PROT_WRITE, pId);
     if (!pAddr) {
         printf("p_mmap return NULL\n");
     }
@@ -335,13 +281,6 @@ void *p_get(int pId, int size) {
     return pAddr;
 }
 
-/*
-* bind address to id
-* @param id the id to bind
-* @param ptr the address to be bind
-* @param size the size of memory region
-* @return value 0 if succeed, otherwise -1
-*/
 int p_bind(int id, void *ptr, int size) {
     int offset = (int)(ptr - (void *)pBaseAddr);
     if (offset < 0 || size < 0) {
@@ -351,12 +290,6 @@ int p_bind(int id, void *ptr, int size) {
     return p_bind_(id, offset, size, HPID);
 }
 
-/*
-* get the bind node based on pId, 
-* @param pId the id of memory region to be retrieved
-* @param psize push size into *psize
-* @return value valid address if succeed, otherwise NULL
-*/
 void *p_get_bind_node(int pId, int *psize) {
     int iRet = 0;
     int offset;
