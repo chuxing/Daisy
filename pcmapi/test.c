@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
     	}
     	printf("Check finish! i=%d\n",i);
     }else if (argc == 2 && argv[1][0] == 'n') {
-    	int* buf=p_new(10000,4096*2);
+	int* buf=p_new(10000,4096*2);
     	int i;
     	for(i=0;i<4096*2/sizeof(int);i++)
     	{
