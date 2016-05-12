@@ -65,6 +65,7 @@ struct ptable_node {
 		u64 offset;
 	};
 	u64 size;
+	u64 vaddr;
 	unsigned long flags; /* BIG_MEM_REGION or SMALL_MEM_REGION */
 	u64 hptable_id; /* 0 or real _id */
 	struct rb_node	ptable_rb;
@@ -123,7 +124,7 @@ struct hptable_node *search_heap_region_node(u64 _id);
  *   memory size
  * return -1 if error & 0 if success 
  */
-int insert_big_region_node(u64 _id, u64 phys_addr, u64 size);
+int insert_big_region_node(u64 _id, u64 phys_addr, u64 size,u64 vaddr);
 /* wapper function: insert a node to ptable rbtree (small region)
  * arguments: 
  *   ptable id, 

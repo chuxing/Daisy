@@ -20,7 +20,7 @@ typedef struct {
 int main(int argc, char **argv) {
     int iRet = 0;
     char *ptr = NULL;
-
+    printf("HEAPO test\n");
     iRet = p_init(4096 * 16);
     if (iRet < 0) {
         printf("error: p_init\n");
@@ -72,24 +72,39 @@ int main(int argc, char **argv) {
     	}
     	printf("Check finish! i=%d\n",i);
     }else if (argc == 2 && argv[1][0] == 'n') {
-	int* buf=p_new(10000,4096*2);
-    	int i;
-    	for(i=0;i<4096*2/sizeof(int);i++)
+    	int j;
+    	for(j=0;j<100;j++)
     	{
-    		buf[i]=i;
+			int* buf=p_new(10000+j,4096);
+			int i;
+			for(i=0;i<4096/sizeof(int);i++)
+			{
+				buf[i]=i;
+			}
     	}
     }else if (argc == 2 && argv[1][0] == 'm') {
-    	int* buf=p_get(10000,4096*2);
-    	int i;
-    	for(i=0;i<4096*2/sizeof(int);i++)
+    	int j;
+    	for(j=0;j<100;j++)
     	{
-    		if(buf[i]!=i)
-    			printf("Check Error! data=%d i=%d\n",buf[i],i);
+			int* buf=p_get(10000+j,4096);
+			int i;
+			for(i=0;i<4096/sizeof(int);i++)
+			{
+				if(buf[i]!=i)
+				{
+					printf("Check Error! data=%d i=%d\n",buf[i],i);
+					break;
+				}
+			}
     	}
     	printf("Check finish!\n");
     }
     else if (argc == 2 && argv[1][0] == 'd') {
-        	printf("p_delete returns %d\n",p_delete(10000));
+    	int j;
+    	for(j=0;j<100;j++)
+    	{
+        	printf("p_delete returns %d\n",p_delete(10000+j));
+    	}
     }
     else {
 

@@ -9,16 +9,16 @@ static void* p_mmap(void* addr,unsigned long len,unsigned long prot,unsigned lon
 	return (void*)syscall(__NR_p_mmap, addr, len, prot, id);
 }
 
-static int p_search_big_region_node(unsigned long id) {
-	return (int)syscall(__NR_p_search_big_region_node, id);
+static void* p_search_big_region_node(unsigned long id) {
+	return (void*)syscall(__NR_p_search_big_region_node, id);
 }
 
 static int p_delete_big_region_node(unsigned long id) {
 	return (int)syscall(__NR_p_delete_big_region_node, id);
 }
 
-static int p_alloc_and_insert(unsigned long id, int size) {
-    return (int)syscall(__NR_p_alloc_and_insert, id, size);
+static void* p_alloc_and_insert(unsigned long id, int size) {
+    return (void*)syscall(__NR_p_alloc_and_insert, id, size);
 }
 
 static int p_get_small_region(unsigned long id,unsigned long size) {
@@ -232,26 +232,27 @@ void *p_new(int pId, int iSize) {
     }
     */
 
-    int iRet = 0;
-
-    iRet = p_search_big_region_node(pId);
+    unsigned long iRet = 0;
+    void *pAddr;
+    pAddr = p_search_big_region_node(pId);
     printf("return from p_search_big_region_node: %d\n", iRet);
-    if (iRet) {
-        printf("id %d already exist\n", pId);
-        //return NULL;
+    if (pAddr==-1) {
+    	pAddr = p_alloc_and_insert(pId, iSize);
+		printf("return from p_alloc_and_insert: %d\n", (int)iRet);
+		if (iRet != 0) {
+			printf("error: p_alloc_and_insert\n");
+			//return NULL;
+		}
     }
-
-    iRet = p_alloc_and_insert(pId, iSize);
-    printf("return from p_alloc_and_insert: %d\n", (int)iRet);
-    if (iRet != 0) {
-        printf("error: p_alloc_and_insert\n");
-        //return NULL;
+    else
+    {
+    	printf("id %d already exist\n", pId);
+    	        //return NULL;
     }
-
-    void *pAddr = p_mmap(NULL, iSize, PROT_READ | PROT_WRITE, pId);
-    if (!pAddr) {
-        printf("p_mmap return NULL\n");
-    }
+	pAddr = p_mmap(pAddr, iSize, PROT_READ | PROT_WRITE, pId);
+	if (!pAddr) {
+		printf("p_mmap return NULL\n");
+	}
 
     return pAddr;
 }
@@ -266,14 +267,14 @@ int p_delete(int pId) {
 
 void *p_get(int pId, int iSize) {
     int iRet = 0;
-    
-    iRet = p_search_big_region_node(pId);
-    if (!iRet) {
+    void *pAddr;
+    pAddr = p_search_big_region_node(pId);
+    if (pAddr==-1) {
         printf("cannot find %d in big region\n", pId);
         return NULL;
     }
-
-    void *pAddr = p_mmap(NULL, iSize, PROT_READ | PROT_WRITE, pId);
+    printf("old virtual addr %p\n", pAddr);
+    pAddr = p_mmap(pAddr, iSize, PROT_READ | PROT_WRITE, pId);
     if (!pAddr) {
         printf("p_mmap return NULL\n");
     }

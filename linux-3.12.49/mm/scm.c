@@ -62,11 +62,11 @@ void scm_full_test(void)
 	struct ptable_node *n;
 	struct page *page;
 
-	insert_big_region_node(345, 0, 0);
+	insert_big_region_node(345, 0, 0,0);
 	scm_print_freelist();
 	insert_small_region_node(344, 0, 0, 557);
 	insert_heap_region_node(557, 0, 0);
-	insert_big_region_node(342, 0, 0);
+	insert_big_region_node(342, 0, 0,0);
 	scm_print_freelist();
 	n = search_big_region_node(342);
 	scm_print_pnode(n);
@@ -250,17 +250,8 @@ static void *get_freenode_addr(void)
 	return ret;
 }
 
-/* 
- * insert new node to ptable rbtree 
- * arguments: 
- *   ptable id, 
- *   physical address, 
- *   memory size, 
- *   hptable id, 
- *   flags
- * return -1 if error & 0 if success 
- */
-static int insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size, u64 hptable_id, unsigned long flags)
+
+static int _insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size, u64 hptable_id, unsigned long flags, u64 vaddr)
 {
 	struct rb_node **n = &scm_head->ptable_rb.rb_node;
 	struct rb_node *parent = NULL;
@@ -274,6 +265,7 @@ static int insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size, u64 hptable_i
 	new->size = size;
 	new->flags = flags;
 	new->hptable_id = hptable_id;
+	new->vaddr = vaddr;
 
 	/* insert to rbtree */
 	while (*n) {
@@ -293,6 +285,21 @@ static int insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size, u64 hptable_i
 }
 
 /* 
+ * insert new node to ptable rbtree
+ * arguments:
+ *   ptable id,
+ *   physical address,
+ *   memory size,
+ *   hptable id,
+ *   flags
+ * return -1 if error & 0 if success
+ */
+static int insert_ptable_node_rb(u64 _id, u64 phys_addr, u64 size, u64 hptable_id, unsigned long flags)
+{
+	return _insert_ptable_node_rb(_id,phys_addr,size,hptable_id,flags,0);
+}
+
+/*
  * insert new node to hptable rbtree 
  * arguments: 
  *   hptable id, 
@@ -338,9 +345,9 @@ static int insert_hptable_node_rb(u64 _id, u64 phys_addr, u64 size)
  *   memory size
  * return -1 if error & 0 if success 
  */
-int insert_big_region_node(u64 _id, u64 phys_addr, u64 size)
+int insert_big_region_node(u64 _id, u64 phys_addr, u64 size,u64 vaddr)
 {
-	return insert_ptable_node_rb(_id, phys_addr, size, 0, BIG_MEM_REGION);
+	return _insert_ptable_node_rb(_id, phys_addr, size, 0, BIG_MEM_REGION,vaddr);
 }
 
 /* wapper function: insert a node to ptable rbtree (small region)
@@ -586,10 +593,34 @@ SYSCALL_DEFINE1(p_delete_big_region_node,u64, _id)
  * exist return true, else return false
  */
 
-SYSCALL_DEFINE1(p_search_big_region_node, unsigned long, id) {
+SYSCALL_DEFINE1(p_search_big_region_node, u64, id) {
 	struct ptable_node *node = search_big_region_node(id);
-	return (node != NULL);
+	return node ? node->vaddr:-1;
 }
+
+extern int pos_insert_vm_area(struct pos_superblock *sb, struct pos_vm_area *vma);
+extern unsigned long pos_get_unmapped_area(unsigned long len, struct pos_vm_area **prev_vma);
+u64 p_get_unmapped_area(unsigned int size) {
+	struct pos_superblock *sb;
+	struct pos_ns_record *record;
+	//struct pos_descriptor *desc = NULL;
+	struct pos_vm_area *pos_vma;
+	// Alloc pos_descriptor
+	sb = pos_get_sb();
+	pos_vma = pos_kmem_cache_alloc(sb->pos_vma_struct_cachep, GFP_KERNEL);
+
+	pos_vma->vm_start = pos_get_unmapped_area(size,NULL);
+	pos_vma->vm_end = pos_vma->vm_start + size;
+	pos_vma->nr_pages = 1;
+	sb->vm_count++;
+
+	// Insert pos_vm_area
+	pos_insert_vm_area(sb, pos_vma);
+
+	sb->ns_count++;
+	return pos_vma->vm_start;
+}
+
 
 /*
  * alloc small region and insert node to hptable
@@ -598,36 +629,36 @@ SYSCALL_DEFINE1(p_search_big_region_node, unsigned long, id) {
  *   memory size
  * return node
  */
-SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, unsigned long, size) {
+SYSCALL_DEFINE2(p_alloc_and_insert, u64, id, unsigned long, size) {
 	int iRet = 0;
 	struct page *page;
+	u64 vaddr;
+	void *pAddr;
 	//allocate for more than 8M
 	if(size>=8*1024*1024)
 	{
-		void *pAddr = get_free_page(size);
-		iRet = insert_big_region_node(id, (u64)pAddr, size);
-		if (iRet != 0) {
-			daisy_printk("error: insert_big_region_node\n");
+		pAddr = get_free_page(size);
+	}
+	else
+	{
+		// decide the order in buddy system
+		int order = 0;
+		int thissize = 4096;
+		while(thissize < size) {
+			thissize*=2;
+			order++;
 		}
-		return iRet;
-	}
-    // decide the order in buddy system
-    int order = 0;
-	int thissize = 4096;
-	while(thissize < size) {
-		thissize*=2;
-	    order++;
-	}
-	daisy_printk("alloc and insert: id=%d sz=%d\n",id,size);
-	printk("Alloc order %d\n",order);
-    // alloc page
-	page = alloc_pages(GFP_KERNEL | GFP_SCM, order);
-	if (page == NULL) {
-		daisy_printk("error: alloc_pages\n");
-		return -1;
-	}
+		daisy_printk("alloc and insert: id=%d sz=%d\n",id,size);
+		printk("Alloc order %d\n",order);
+		// alloc page
+		page = alloc_pages(GFP_KERNEL | GFP_SCM, order);
+		if (page == NULL) {
+			daisy_printk("error: alloc_pages\n");
+			return -1;
+		}
 
-	void *pAddr = (page_to_pfn(page) << PAGE_SHIFT);
+		pAddr = (page_to_pfn(page) << PAGE_SHIFT);
+	}
 	if (pAddr == NULL) {
 		daisy_printk("error: page_address");
 		return -1;
@@ -636,12 +667,13 @@ SYSCALL_DEFINE2(p_alloc_and_insert, unsigned long, id, unsigned long, size) {
 	}
 
     // insert into ptable
-	iRet = insert_big_region_node(id, (u64)pAddr, size);
+	vaddr=p_get_unmapped_area(size);
+	iRet = insert_big_region_node(id, (u64)pAddr, size,vaddr);
 	if (iRet != 0) {
 		daisy_printk("error: insert_big_region_node\n");
 	}
 
-	return iRet;
+	return vaddr;
 }
 
 /*

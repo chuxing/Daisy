@@ -3449,7 +3449,7 @@ unsigned long do_p_mmap_pgoff(unsigned long addr,
 	if(addr2!=addr)
 	{
 		printk("p_mmap invalid addr\n");
-		return -ENOMEM;
+		//return -ENOMEM;
 	}
 	if (addr & ~PAGE_MASK)
 		return addr;
