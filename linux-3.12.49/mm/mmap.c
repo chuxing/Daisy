@@ -3412,7 +3412,7 @@ unsigned long do_p_mmap_pgoff(unsigned long addr,
 {
 	struct mm_struct *mm = current->mm;
 	vm_flags_t vm_flags;
-
+	unsigned long addr2=addr;
 	/*
 	 * Does the application expect PROT_READ to imply PROT_EXEC?
 	 *
@@ -3444,7 +3444,13 @@ unsigned long do_p_mmap_pgoff(unsigned long addr,
 	/* Obtain the address to map to. we verify (or select) it and ensure
 	 * that it represents a valid section of the address space.
 	 */
+
 	addr = get_unmapped_area(NULL, addr, len, pgoff, flags);
+	if(addr2!=addr)
+	{
+		printk("p_mmap invalid addr\n");
+		return -ENOMEM;
+	}
 	if (addr & ~PAGE_MASK)
 		return addr;
 
