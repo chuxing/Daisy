@@ -18,6 +18,12 @@ static u64 freecount = 0; // count freelist
 
 static char *scm_free_pages;
 
+extern struct pos_vm_area* pos_find_vma(struct pos_superblock* sb, unsigned long addr);
+extern struct pos_vm_area* pos_find_vma_prev(struct pos_superblock* sb, unsigned long addr, struct pos_vm_area** prev);
+extern void pos_remove_vm_area(struct pos_superblock* sb, struct pos_vm_area* vma, struct pos_vm_area* prev);
+extern void pos_free_map_array(struct pos_map_array* map_array);
+extern void pos_unmap_vma(struct mm_struct* mm, struct pos_vm_area* vma);
+
 /* print scm freelist status */
 static void scm_print_freelist(void)
 {
@@ -490,10 +496,32 @@ static void add_freenode_addr(void *addr)
 static int delete_ptable_node_rb(u64 _id, unsigned long flags)
 {
 	struct ptable_node *n;
+	struct pos_vm_area *vma, *prev_vma, *vma_tmp;
+	struct pos_superblock* sb = pos_get_sb();
+ 
 	n = search_ptable_node_rb(_id, flags);
-	if (!n) {
+	if (!n)
 		return -1;
-	}
+
+	vma = pos_find_vma(sb, n->vaddr);
+	//daisy_printk("vaddr: %llx\n", n->vaddr);
+	if (!vma)
+		return -1;
+	//daisy_printk("get vma through vaddr done\n");
+	vma_tmp = pos_find_vma_prev(sb, vma->vm_start, &prev_vma);
+	if (vma != vma_tmp)
+		return -1;
+	//daisy_printk("pos_find_vma_prev done, %p\n", vma);
+	pos_remove_vm_area(sb, vma, prev_vma);
+	//daisy_printk("pos_remove_vm_area done, %p, %p\n", vma, vma->map_array);
+	//pos_free_map_array(vma->map_array);
+	//daisy_printk("pos_free_map_array done, %p\n", vma);
+	pos_unmap_vma(current->mm, vma);
+	//daisy_printk("pos_unmap_vma done, %p\n", vma);
+	pos_kmem_cache_free(sb->pos_vma_struct_cachep, vma);
+	//daisy_printk("pos_kmem_cache_free done, %p\n", vma);
+	sb->vm_count--;
+
 	rb_erase(&n->ptable_rb, &scm_head->ptable_rb);
 	add_freenode_addr((void *)n);
 	return 0;
