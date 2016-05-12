@@ -78,6 +78,7 @@
 #include <linux/context_tracking.h>
 #include <linux/random.h>
 #include <linux/scm.h>
+#include <linux/pos.h>
 
 #include <asm/io.h>
 #include <asm/bugs.h>
@@ -659,6 +660,7 @@ asmlinkage void __init start_kernel(void)
 
 	ftrace_init();
 
+	pos_init();
 	/* Do the rest non-__init'ed, we're now alive */
 	rest_init();
 }

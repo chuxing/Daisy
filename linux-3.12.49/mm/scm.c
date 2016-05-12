@@ -5,6 +5,9 @@
 #include <linux/rbtree.h>
 #include <linux/syscalls.h>
 
+#include <linux/pos.h>
+#include <linux/pos_namespace.h>
+
 /* pointer to scm memory head */
 static struct scm_head *scm_head;
 /* pointer to ptable node freelist */
