@@ -87,7 +87,7 @@ int p_init(int size) {
         return -1;
     }
 
-    pBaseAddr = p_mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, HPID);
+    pBaseAddr = (char*) p_mmap(NULL, SHM_SIZE, PROT_READ | PROT_WRITE, HPID);
     if (!pBaseAddr) {
         printf("p_mmap return NULL\n");
     }
@@ -297,7 +297,7 @@ void *p_get(int pId, int iSize) {
 }
 
 int p_bind(int id, void *ptr, int size) {
-    int offset = (int)(ptr - (void *)pBaseAddr);
+    int offset = (int)((long)ptr - (long)pBaseAddr);
     if (offset < 0 || size < 0) {
         return -1;
     }
