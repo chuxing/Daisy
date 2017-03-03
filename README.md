@@ -4,12 +4,19 @@
 2. Take steps as follows:
 
 > git clone git@github.com:DDST-NVM/Daisy.git
+
 > cd Daisy/linux-3.12.49/
+
 > sudo make mrproper
+
 > sudo make localmodconfig (and then press enter for all options)
+
 > sudo make -jN(N is the number of your cores)
+
 > sudo make install_modules
+
 > sudo make install
+
 > sudo reboot
 
 3. During your reboot phase, please press `F12` or `SHIFT` to choose the linux kernel version. You should choose linux-3.12.49 for running Daisy System.
@@ -18,8 +25,13 @@
 6. Take steps as follows: 
 
 > cd pcmapi
+
 > chmod u=rwx create_so.sh
+
 > ./create_so.sh 
+
 > make
+
 > ./ptest
+
 7. You can debug our user-mode codes with gdb.
