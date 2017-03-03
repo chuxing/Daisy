@@ -2,6 +2,7 @@
 
 1. Make sure that you have an Linux System Running with at least 6GB memory
 2. Take steps as follows:
+
 > git clone git@github.com:DDST-NVM/Daisy.git
 > cd Daisy/linux-3.12.49/
 > sudo make mrproper
@@ -15,6 +16,7 @@
 4. If there is problem with the window showing during the boot phase, please reboot and edit the grub interface.
 5. If everything goes smoonthly, just return to the Daisy directory.
 6. Take steps as follows: 
+
 > cd pcmapi
 > chmod u=rwx create_so.sh
 > ./create_so.sh 
