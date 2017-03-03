@@ -1,7 +1,7 @@
 # Daisy: How to Use
 
-1. Make sure that you have an Linux System Running with at least 6GB memory
-2. Take steps as follows:
+- Make sure that you have an Linux System Running with at least 6GB memory
+- Take steps as follows:
 
 > git clone git@github.com:DDST-NVM/Daisy.git
 
@@ -19,10 +19,10 @@
 
 > sudo reboot
 
-3. During your reboot phase, please press `F12` or `SHIFT` to choose the linux kernel version. You should choose linux-3.12.49 for running Daisy System.
-4. If there is problem with the window showing during the boot phase, please reboot and edit the grub interface.
-5. If everything goes smoonthly, just return to the Daisy directory.
-6. Take steps as follows: 
+- During your reboot phase, please press `F12` or `SHIFT` to choose the linux kernel version. You should choose linux-3.12.49 for running Daisy System.
+- If there is problem with the window showing during the boot phase, please reboot and edit the grub interface.
+- If everything goes smoonthly, just return to the Daisy directory.
+- Take steps as follows: 
 
 > cd pcmapi
 
