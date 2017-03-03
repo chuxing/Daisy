@@ -34,4 +34,4 @@
 
 > ./ptest
 
-7. You can debug our user-mode codes with gdb.
+- You can debug our user-mode codes with gdb.
