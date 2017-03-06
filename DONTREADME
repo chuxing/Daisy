@@ -1,0 +1,6 @@
+to install two versions of BDB: the second installation need to change lib name and dir in MakeFile
+when compile, use -L -I options to compile with corresponding BDB
+
+Para-shanghai dependency: lscmcxx
+firewall dependency: firewallscm compile with BDBmod, others compile with BDB (modify options in MakeFile to compile with different BDB after ./configure)
+insert-benchmark dependency: insert-scm compile with BDBmod, others compile with BDB
