@@ -1971,9 +1971,11 @@ zonelist_scan:
 			(alloc_flags & ALLOC_CPUSET) &&
 			!cpuset_zone_allowed_softwall(zone, gfp_mask))
 				continue;
-		if(gfp_mask & __GFP_SCM) {
-			goto try_this_zone;
-		}
+#ifdef CONFIG_SCM
+		// if gfp_mask is set for GFP_SCM, then only check SCM zone to allocate
+		if ((gfp_mask & GFP_SCM) && !is_scm(zone))
+			continue;
+#endif
 		/*
 		 * Distribute pages in proportion to the individual
 		 * zone size to ensure fair page aging.  The zone a
@@ -2588,6 +2590,20 @@ restart:
 	 */
 	if (!(alloc_flags & ALLOC_CPUSET) && !nodemask) {
 		struct zoneref *preferred_zoneref;
+#ifdef CONFIG_SCM
+		if (gfp_mask & GFP_SCM) {
+			struct zone* zone;
+			struct zoneref* z;
+			for_each_zone_zonelist_nodemask(zone, z, zonelist,
+							high_zoneidx, nodemask ? : &cpuset_current_mems_allowed) {
+				if (is_scm(zone)) {
+					preferred_zone = zone;
+					preferred_zoneref = z;
+					break;
+				}
+			}
+		} else
+#endif
 		preferred_zoneref = first_zones_zonelist(zonelist, high_zoneidx,
 				NULL,
 				&preferred_zone);
@@ -2786,6 +2802,20 @@ retry_cpuset:
 	cpuset_mems_cookie = read_mems_allowed_begin();
 
 	/* The preferred zone is used for statistics later */
+#ifdef CONFIG_SCM
+	if (gfp_mask & GFP_SCM) {
+		struct zone *zone;
+		struct zoneref *z;
+		for_each_zone_zonelist_nodemask(zone, z, zonelist,
+						high_zoneidx, nodemask ? : &cpuset_current_mems_allowed) {
+			if (is_scm(zone)) {
+				preferred_zone = zone;
+				preferred_zoneref = z;
+				break;
+			}
+		}
+	} else
+#endif
 	preferred_zoneref = first_zones_zonelist(zonelist, high_zoneidx,
 				nodemask ? : &cpuset_current_mems_allowed,
 				&preferred_zone);
