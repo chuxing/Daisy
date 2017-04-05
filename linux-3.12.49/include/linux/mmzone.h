@@ -890,6 +890,16 @@ static inline int zone_movable_is_highmem(void)
 #endif
 }
 
+static inline int is_scm(struct zone *zone)
+{
+#ifdef CONFIG_SCM
+	int zone_off = (char *)zone - (char*)zone->zone_pgdat->node_zones;
+	return zone_off == ZONE_SCM * sizeof(*zone);
+#else
+	return 0;
+#endif
+}
+
 static inline int is_highmem_idx(enum zone_type idx)
 {
 #ifdef CONFIG_HIGHMEM
