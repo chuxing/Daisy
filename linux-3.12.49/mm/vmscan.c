@@ -2328,6 +2328,11 @@ static bool shrink_zones(struct zonelist *zonelist, struct scan_control *sc)
 					gfp_zone(sc->gfp_mask), sc->nodemask) {
 		if (!populated_zone(zone))
 			continue;
+#ifdef CONFIG_SCM
+		// don't shrink DRAM zone if SCM specified
+		if (gfp_mask & GFP_SCM && !is_scm(zone))
+			continue;
+#endif
 		/*
 		 * Take care memory controller reclaiming has small influence
 		 * to global LRU.
@@ -2394,6 +2399,29 @@ static bool all_unreclaimable(struct zonelist *zonelist,
 	return true;
 }
 
+#ifdef CONFIG_SCM
+/* SCM zone in zonelist are unreclaimable? */
+static bool all_unreclaimable_scm(struct zonelist *zonelist,
+		struct scan_control *sc)
+{
+	struct zoneref *z;
+	struct zone *zone;
+
+	for_each_zone_zonelist_nodemask(zone, z, zonelist,
+			gfp_zone(sc->gfp_mask), sc->nodemask) {
+		if (!is_scm(zone))
+			continue;
+		if (!populated_zone(zone))
+			continue;
+		if (!cpuset_zone_allowed_hardwall(zone, GFP_KERNEL))
+			continue;
+		if (zone_reclaimable(zone))
+			return false;
+	}
+
+	return true;
+}
+#endif
 /*
  * This is the main entry point to direct page reclaim.
  *
@@ -2444,6 +2472,10 @@ static unsigned long do_try_to_free_pages(struct zonelist *zonelist,
 			nodes_clear(shrink->nodes_to_scan);
 			for_each_zone_zonelist_nodemask(zone, z, zonelist,
 					gfp_zone(sc->gfp_mask), sc->nodemask) {
+#ifdef CONFIG_SCM
+				if ((gfp_mask & GFP_SCM) && !is_scm(zone))
+					continue;
+#endif
 				if (!cpuset_zone_allowed_hardwall(zone, GFP_KERNEL))
 					continue;
 
@@ -2503,6 +2535,12 @@ out:
 		return 1;
 
 	/* top priority shrink_zones still had more to do? don't OOM, then */
+#ifdef CONFIG_SCM
+	if (gfp_mask & GFP_SCM)
+		if (global_reclaim(sc) && !all_unreclaimable_scm(zonelist, sc))
+			return 1;
+	else
+#endif
 	if (global_reclaim(sc) && !all_unreclaimable(zonelist, sc))
 		return 1;
 
