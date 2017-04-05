@@ -817,10 +817,11 @@ void release_pages(struct page **pages, int nr, bool cold)
 
 	for (i = 0; i < nr; i++) {
 		struct page *page = pages[i];
+		/*
 		if(page_zone(page)->name[0] == 'S' && page_zone(page)->name[1] == 'c' && page_zone(page)->name[2] == 'm') {
 				//daisy_printk("find scm page, continue\n");
 				continue;
-		}
+		} */
 		if (unlikely(PageCompound(page))) {
 			if (zone) {
 				spin_unlock_irqrestore(&zone->lru_lock, flags);
