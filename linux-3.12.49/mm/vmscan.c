@@ -2330,7 +2330,7 @@ static bool shrink_zones(struct zonelist *zonelist, struct scan_control *sc)
 			continue;
 #ifdef CONFIG_SCM
 		// don't shrink DRAM zone if SCM specified
-		if (gfp_mask & GFP_SCM && !is_scm(zone))
+		if ((sc->gfp_mask) & GFP_SCM && !is_scm(zone))
 			continue;
 #endif
 		/*
@@ -2473,7 +2473,7 @@ static unsigned long do_try_to_free_pages(struct zonelist *zonelist,
 			for_each_zone_zonelist_nodemask(zone, z, zonelist,
 					gfp_zone(sc->gfp_mask), sc->nodemask) {
 #ifdef CONFIG_SCM
-				if ((gfp_mask & GFP_SCM) && !is_scm(zone))
+				if ((sc->gfp_mask & GFP_SCM) && !is_scm(zone))
 					continue;
 #endif
 				if (!cpuset_zone_allowed_hardwall(zone, GFP_KERNEL))
@@ -2536,7 +2536,7 @@ out:
 
 	/* top priority shrink_zones still had more to do? don't OOM, then */
 #ifdef CONFIG_SCM
-	if (gfp_mask & GFP_SCM)
+	if (sc->gfp_mask & GFP_SCM)
 		if (global_reclaim(sc) && !all_unreclaimable_scm(zonelist, sc))
 			return 1;
 	else
