@@ -13,7 +13,7 @@
 
 > sudo make -jN(N is the number of your cores)
 
-> sudo make install_modules
+> sudo make modules_install
 
 > sudo make install
 
